@@ -1,0 +1,50 @@
+/* src/assets/styles/global.css */
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f9f9f9;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.content {
+  flex: 1;
+  padding: 20px;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #0055a5;
+  padding: 10px 20px;
+}
+.navbar .nav-logo a {
+  color: #fff;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: bold;
+}
+.navbar .nav-links {
+  list-style: none;
+  display: flex;
+  gap: 15px;
+}
+.navbar .nav-links a {
+  color: #fff;
+  text-decoration: none;
+}
+
+/* Footer */
+.footer {
+  background-color: #0055a5;
+  color: white;
+  text-align: center;
+  padding: 10px;
+}

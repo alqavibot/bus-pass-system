@@ -1,0 +1,73 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Students Collection ---
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- Buses + Stages (open read for students, write only for now by any auth user) ---
+    match /buses/{busId} {
+      allow read: if request.auth != null; // students can view
+      allow write: if request.auth != null; // TEMP: allow all signed-in users
+    }
+
+    // --- Payments Collection ---
+    match /payments/{paymentId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId);
+      allow update, delete: if request.auth != null && request.auth.uid == resource.data.studentId;
+    }
+
+    // --- Default deny ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && !(request.resource.data.hallTicket != resource.data.hallTicket);
+      allow read: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    
+    match /users/{userId} {
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.uid == "Z5JX1bsEEnfoh0v12Jz1XSl1FEC3" ||
+        (request.auth.token != null && request.auth.token.admin == true)
+      );
+    }
+    match /buses/{busId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /passes/{passId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+     match /payments/{paymentId} {
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+    
+     match /settings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

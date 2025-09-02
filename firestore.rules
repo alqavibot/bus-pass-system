@@ -18,10 +18,14 @@ service cloud.firestore {
       // Students can read/update their own profile
       allow read, update: if request.auth != null && request.auth.uid == userId;
 
+      allow read, update, delete: if isAdmin();
+
       // Extra: Lock hallTicket (can't be modified after creation)
       allow update: if request.auth != null
                     && request.auth.uid == userId
                     && request.resource.data.hallTicket == resource.data.hallTicket;
+
+      
     }
 
     // --- Buses Collection ---

@@ -10,7 +10,12 @@ import {
   ListItem,
   ListItemText,
   IconButton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Paper,
 } from "@mui/material";
+import { ExpandMore, Edit, Delete } from "@mui/icons-material";
 import { db } from "../../firebase/config";
 import {
   collection,
@@ -19,8 +24,10 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
-import { Edit, Delete } from "@mui/icons-material";
 
 export default function ManageBuses() {
   const [buses, setBuses] = useState([]);
@@ -56,9 +63,18 @@ export default function ManageBuses() {
     setEditId(bus.id);
   };
 
-  // Delete Bus
+  // Delete Bus + its stages
   const handleDelete = async (id) => {
-    await deleteDoc(doc(db, "buses", id));
+    if (window.confirm("Deleting this bus will also delete its stages. Continue?")) {
+      await deleteDoc(doc(db, "buses", id));
+
+      // Delete all stages for this bus
+      const stageQuery = query(collection(db, "stages"), where("busId", "==", id));
+      const snapshot = await getDocs(stageQuery);
+      snapshot.forEach(async (stageDoc) => {
+        await deleteDoc(doc(db, "stages", stageDoc.id));
+      });
+    }
   };
 
   return (
@@ -89,29 +105,39 @@ export default function ManageBuses() {
         </Button>
       </Box>
 
-      {/* List of Buses */}
-      <List>
-        {buses.map((bus) => (
-          <ListItem
-            key={bus.id}
-            secondaryAction={
-              <>
-                <IconButton onClick={() => handleEdit(bus)}>
-                  <Edit />
-                </IconButton>
-                <IconButton onClick={() => handleDelete(bus.id)}>
-                  <Delete />
-                </IconButton>
-              </>
-            }
-          >
-            <ListItemText
-              primary={`Bus ${bus.number}`}
-              secondary={`Driver: ${bus.driver || "N/A"}`}
-            />
-          </ListItem>
-        ))}
-      </List>
+      {/* Accordion for Existing Buses */}
+      <Accordion>
+        <AccordionSummary expandIcon={<ExpandMore />}>
+          <Typography>View Existing Buses ({buses.length})</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          {/* Scrollable list */}
+          <Paper sx={{ maxHeight: 300, overflow: "auto" }}>
+            <List>
+              {buses.map((bus) => (
+                <ListItem
+                  key={bus.id}
+                  secondaryAction={
+                    <>
+                      <IconButton onClick={() => handleEdit(bus)}>
+                        <Edit />
+                      </IconButton>
+                      <IconButton onClick={() => handleDelete(bus.id)}>
+                        <Delete />
+                      </IconButton>
+                    </>
+                  }
+                >
+                  <ListItemText
+                    primary={`Bus ${bus.number}`}
+                    secondary={`Driver: ${bus.driver || "N/A"}`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        </AccordionDetails>
+      </Accordion>
     </Container>
   );
 }

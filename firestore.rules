@@ -3,69 +3,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ✅ Utility: Check admin
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.uid == "Z5JX1bsEEnfoh0v12Jz1XSl1FEC3" || // your hard-coded admin UID
+        (request.auth.token != null && request.auth.token.admin == true)
+      );
+    }
+
     // --- Students Collection ---
     match /users/{userId} {
       allow create: if request.auth != null && request.auth.uid == userId;
+
+      // Students can read/update their own profile
       allow read, update: if request.auth != null && request.auth.uid == userId;
+
+      // Extra: Lock hallTicket (can't be modified after creation)
+      allow update: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.hallTicket == resource.data.hallTicket;
     }
 
-    // --- Buses + Stages (open read for students, write only for now by any auth user) ---
+    // --- Buses Collection ---
     match /buses/{busId} {
-      allow read: if request.auth != null; // students can view
-      allow write: if request.auth != null; // TEMP: allow all signed-in users
+      allow read: if request.auth != null; // all signed-in users can read
+      allow write: if isAdmin();           // only admin can add/edit/delete
+    }
+
+    // --- Stages Collection ---
+    match /stages/{stageId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     // --- Payments Collection ---
     match /payments/{paymentId} {
+      // Students create their own payment doc
       allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
-      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId);
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.studentId;
+
+      // Student can read their own, Admin can read all
+      allow read: if request.auth != null && (
+        request.auth.uid == resource.data.studentId || isAdmin()
+      );
+
+      // Students cannot edit/delete payments after creation
+      allow update, delete: if isAdmin();
+    }
+
+    // --- Passes Collection ---
+    match /passes/{passId} {
+      // Student can read only their own pass
+      allow read: if request.auth != null && request.auth.uid == passId;
+
+      // Admin manages issuing/expiring passes
+      allow write: if isAdmin();
+    }
+
+    // --- Settings (Academic Year) ---
+    match /settings/{docId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin(); // admin sets currentAcademicYear
     }
 
     // --- Default deny ---
-    match /{document=**} {
-      allow read, write: if false;
-    }
-    match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId
-                    && !(request.resource.data.hallTicket != resource.data.hallTicket);
-      allow read: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    
-    match /users/{userId} {
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-    }
-
-    function isAdmin() {
-      return request.auth != null && (
-        request.auth.uid == "Z5JX1bsEEnfoh0v12Jz1XSl1FEC3" ||
-        (request.auth.token != null && request.auth.token.admin == true)
-      );
-    }
-    match /buses/{busId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-
-    match /passes/{passId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    
-     match /payments/{paymentId} {
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
-      allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || isAdmin());
-      allow update, delete: if isAdmin();
-    }
-    
-     match /settings/{docId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-
     match /{document=**} {
       allow read, write: if false;
     }

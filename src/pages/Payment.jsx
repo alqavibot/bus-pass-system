@@ -1,200 +1,148 @@
-import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase/config";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { Navigate } from "react-router-dom";
-
-// MUI imports
+// src/pages/student/StudentPayment.jsx
+import React, { useEffect, useState } from "react";
 import {
   Container,
   Typography,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Radio,
   RadioGroup,
   FormControlLabel,
+  Radio,
   Button,
-  CircularProgress,
-  Alert,
+  Card,
+  CardContent,
 } from "@mui/material";
+import { useAuth } from "../../context/AuthContext";
+import { db } from "../../firebase/config";
+import {
+  doc,
+  getDoc,
+  addDoc,
+  collection,
+  serverTimestamp,
+  setDoc,
+} from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
-export default function Payment() {
-  const { user } = useAuth();
-  const [buses, setBuses] = useState([]);
-  const [stages, setStages] = useState([]);
-  const [busId, setBusId] = useState("");
-  const [stageId, setStageId] = useState("");
-  const [fee, setFee] = useState(0);
-  const [paymentType, setPaymentType] = useState("full"); // full | installment
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState("");
+export default function StudentPayment() {
+  const { currentUser } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [stageFee, setStageFee] = useState(null);
+  const [mode, setMode] = useState("full"); // default full
+  const navigate = useNavigate();
 
-  if (!user) return <Navigate to="/login" />;
-
-  // 🔹 Load all buses from Firestore
+  // Fetch profile
   useEffect(() => {
-    async function loadBuses() {
-      const snap = await getDocs(collection(db, "buses"));
-      const list = [];
-      snap.forEach((doc) => list.push({ id: doc.id, ...doc.data() }));
-      setBuses(list);
-    }
-    loadBuses();
-  }, []);
+    if (!currentUser) return;
+    (async () => {
+      const snap = await getDoc(doc(db, "users", currentUser.uid));
+      if (snap.exists()) {
+        setProfile(snap.data());
+      }
+    })();
+  }, [currentUser]);
 
-  // 🔹 When bus changes → update stage list
+  // Fetch stage fee
   useEffect(() => {
-    const selected = buses.find((b) => b.id === busId);
-    if (selected && Array.isArray(selected.stages)) {
-      setStages(selected.stages);
+    if (!profile?.stage || !profile?.busId) return;
+    (async () => {
+      const q = await getDoc(doc(db, "stages", profile.stage));
+      if (q.exists()) {
+        setStageFee(q.data());
+      }
+    })();
+  }, [profile]);
+
+  const handlePayment = async () => {
+    if (!stageFee) return;
+
+    let amountPaid = 0;
+    let dueAmount = 0;
+
+    if (mode === "full") {
+      amountPaid = stageFee.fullFee;
+      dueAmount = 0;
     } else {
-      setStages([]);
+      amountPaid = stageFee.installment1;
+      dueAmount = stageFee.installment2;
     }
-    setStageId("");
-    setFee(0);
-  }, [busId, buses]);
 
-  // 🔹 When stage changes → update fee
-  useEffect(() => {
-    if (stageId) {
-      const stage =
-        stages.find((s) => s.id === stageId || s.stageName === stageId) || null;
-      if (stage) {
-        setFee(stage.fullFee || stage.price || 0);
-      }
-    }
-  }, [stageId, stages]);
+    // Save payment record
+    await addDoc(collection(db, "payments"), {
+      studentId: currentUser.uid,
+      busId: profile.busId,
+      stageId: profile.stage,
+      mode,
+      amount: amountPaid,
+      dueAmount,
+      timestamp: serverTimestamp(),
+      status: "paid",
+    });
 
-  // 🔹 Fake payment → (later Razorpay integration)
-  const handlePay = async () => {
-    if (!busId || !stageId) {
-      setMsg("Please select bus and stage.");
-      return;
-    }
-    setLoading(true);
-    setMsg("");
+    // Save/update pass
+    await setDoc(doc(db, "passes", currentUser.uid), {
+      studentId: currentUser.uid,
+      busId: profile.busId,
+      stageId: profile.stage,
+      status: dueAmount > 0 ? "due" : "active",
+      dueAmount,
+      paymentMode: mode,
+      issuedAt: new Date(),
+    });
 
-    try {
-      let amount = fee;
-      if (paymentType === "installment") {
-        amount = Math.ceil(fee / 2);
-      }
-
-      const ref = doc(db, "users", user.uid);
-      await updateDoc(ref, {
-        busId,
-        stageId,
-        lastPaymentDate: new Date().toISOString(),
-      });
-
-      await addDoc(collection(db, "users", user.uid, "payments"), {
-        busId,
-        stageId,
-        amount,
-        type: paymentType,
-        status: "success",
-        createdAt: serverTimestamp(),
-      });
-
-      setMsg(`✅ Payment successful! Paid ₹${amount}`);
-    } catch (err) {
-      console.error("Payment error", err);
-      setMsg("❌ Payment failed. Try again.");
-    } finally {
-      setLoading(false);
-    }
+    alert("Payment successful!");
+    navigate("/student/dashboard");
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 5 }}>
-      <Typography variant="h5" gutterBottom>
-        Bus Fee Payment
-      </Typography>
-
-      {/* Bus selection */}
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <InputLabel>Select Bus</InputLabel>
-        <Select value={busId} onChange={(e) => setBusId(e.target.value)}>
-          <MenuItem value="">-- Select --</MenuItem>
-          {buses.map((b) => (
-            <MenuItem key={b.id} value={b.id}>
-              {b.busNumber || b.id}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {/* Stage selection */}
-      <FormControl fullWidth sx={{ mb: 3 }}>
-        <InputLabel>Select Stage</InputLabel>
-        <Select
-          value={stageId}
-          onChange={(e) => setStageId(e.target.value)}
-          disabled={!stages.length}
-        >
-          <MenuItem value="">-- Select --</MenuItem>
-          {stages.map((s, idx) => (
-            <MenuItem key={s.id || idx} value={s.id || s.stageName}>
-              {s.stageName} (₹{s.fullFee ?? s.price ?? "-"})
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-
-      {/* Fee + payment type */}
-      {fee > 0 && (
-        <>
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            Fee for this stage: ₹{fee}
+    <Container maxWidth="sm" sx={{ mt: 4 }}>
+      <Card>
+        <CardContent>
+          <Typography variant="h5" gutterBottom>
+            Fee Payment
           </Typography>
-          <RadioGroup
-            value={paymentType}
-            onChange={(e) => setPaymentType(e.target.value)}
-          >
-            <FormControlLabel
-              value="full"
-              control={<Radio />}
-              label={`Full Payment (₹${fee})`}
-            />
-            <FormControlLabel
-              value="installment"
-              control={<Radio />}
-              label={`Installment (₹${Math.ceil(fee / 2)} now)`}
-            />
-          </RadioGroup>
-        </>
-      )}
 
-      {/* Pay Button */}
-      <Button
-        variant="contained"
-        color="primary"
-        fullWidth
-        onClick={handlePay}
-        disabled={loading}
-        sx={{ mt: 3 }}
-      >
-        {loading ? <CircularProgress size={24} /> : "Pay Now"}
-      </Button>
+          {!stageFee ? (
+            <Typography color="text.secondary">
+              Loading fee details...
+            </Typography>
+          ) : (
+            <>
+              <Typography>
+                Bus: {profile?.busNumber} | Stage: {profile?.stageName}
+              </Typography>
+              <Typography>
+                Full Fee: ₹{stageFee.fullFee} | Installments: ₹
+                {stageFee.installment1} + ₹{stageFee.installment2}
+              </Typography>
 
-      {/* Status message */}
-      {msg && (
-        <Alert
-          severity={msg.startsWith("✅") ? "success" : "error"}
-          sx={{ mt: 3 }}
-        >
-          {msg}
-        </Alert>
-      )}
+              <RadioGroup
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+              >
+                <FormControlLabel
+                  value="full"
+                  control={<Radio />}
+                  label={`Full Payment (₹${stageFee.fullFee})`}
+                />
+                <FormControlLabel
+                  value="installment"
+                  control={<Radio />}
+                  label={`Installment 1 (₹${stageFee.installment1}), Due: ₹${stageFee.installment2}`}
+                />
+              </RadioGroup>
+
+              <Button
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{ mt: 2 }}
+                onClick={handlePayment}
+              >
+                Pay Now
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </Container>
   );
 }

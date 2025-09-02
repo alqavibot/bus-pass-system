@@ -1,44 +1,104 @@
-// src/pages/admin/Settings.jsx
-import React, { useEffect, useState } from "react";
-import { Container, Typography, TextField, Button, Box } from "@mui/material";
-import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+import {
+  Container,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+} from "@mui/material";
 import { db } from "../../firebase/config";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
 
 export default function Settings() {
-  const [settings, setSettings] = useState({ academicYear: "", dueDays: 30, lateFeePercent: 2 });
-  const [loading, setLoading] = useState(false);
+  const [year, setYear] = useState("");
+  const [currentYear, setCurrentYear] = useState("");
 
+  // Load current academic year
   useEffect(() => {
-    const load = async () => {
-      const ref = doc(db, "settings", "app");
-      const snap = await getDoc(ref);
-      if (snap.exists()) setSettings(prev => ({ ...prev, ...snap.data() }));
+    const fetchYear = async () => {
+      const docRef = doc(db, "settings", "academicYear");
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        setCurrentYear(snap.data().year);
+      }
     };
-    load();
+    fetchYear();
   }, []);
 
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      await setDoc(doc(db, "settings", "app"), { ...settings, updatedAt: serverTimestamp() }, { merge: true });
-      alert("Settings saved");
-    } catch (err) {
-      console.error(err);
-      alert("Save failed");
+  // Update Academic Year
+  const handleUpdate = async () => {
+    if (!year) return alert("Please enter a valid academic year");
+
+    // Step 1: Update settings
+    const docRef = doc(db, "settings", "academicYear");
+    await setDoc(docRef, { year }, { merge: true });
+
+    // Step 2: Expire all passes of previous year
+    if (currentYear && currentYear !== year) {
+      const passesSnap = await getDocs(collection(db, "passes"));
+      const updates = passesSnap.docs.map(async (d) => {
+        const pass = d.data();
+        if (pass.academicYear === currentYear) {
+          await updateDoc(doc(db, "passes", d.id), { status: "expired" });
+        }
+      });
+      await Promise.all(updates);
     }
-    setLoading(false);
+
+    setCurrentYear(year);
+    setYear("");
+    alert("Academic Year updated successfully!");
   };
 
   return (
-    <Container>
-      <Typography variant="h6" sx={{ mb: 2 }}>Application Settings</Typography>
-      <Box sx={{ maxWidth: 480 }}>
-        <TextField label="Academic Year" fullWidth value={settings.academicYear} onChange={(e)=>setSettings({...settings, academicYear: e.target.value})} sx={{mb:2}} />
-        <TextField label="Due Days" type="number" fullWidth value={settings.dueDays} onChange={(e)=>setSettings({...settings, dueDays: Number(e.target.value)})} sx={{mb:2}} />
-        <TextField label="Late Fee % (per period)" type="number" fullWidth value={settings.lateFeePercent} onChange={(e)=>setSettings({...settings, lateFeePercent: Number(e.target.value)})} sx={{mb:2}} />
+    <Container maxWidth="sm">
+      <Typography variant="h5" gutterBottom>
+        ⚙️ Admin Settings
+      </Typography>
+      <Divider sx={{ mb: 2 }} />
 
-        <Button variant="contained" onClick={handleSave} disabled={loading}>Save Settings</Button>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body1">
+          <strong>Current Academic Year:</strong>{" "}
+          {currentYear || "Not Set"}
+        </Typography>
       </Box>
+
+      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <TextField
+          label="New Academic Year"
+          placeholder="e.g. 2025-2026"
+          value={year}
+          onChange={(e) => setYear(e.target.value)}
+          fullWidth
+        />
+        <Button variant="contained" onClick={handleUpdate}>
+          Update
+        </Button>
+      </Box>
+
+      <Typography variant="subtitle1" gutterBottom>
+        🔹 Notes:
+      </Typography>
+      <List dense>
+        <ListItem>
+          <ListItemText primary="When you change the academic year, all passes from the previous year will automatically be marked as expired." />
+        </ListItem>
+        <ListItem>
+          <ListItemText primary="Make sure to set this once at the beginning of every academic cycle." />
+        </ListItem>
+      </List>
     </Container>
   );
 }

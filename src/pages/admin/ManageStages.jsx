@@ -14,6 +14,11 @@ import {
   Select,
   InputLabel,
   FormControl,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Paper,
+  Alert,
 } from "@mui/material";
 import { db } from "../../firebase/config";
 import {
@@ -23,9 +28,8 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  query,
 } from "firebase/firestore";
-import { Edit, Delete } from "@mui/icons-material";
+import { Edit, Delete, ExpandMore } from "@mui/icons-material";
 
 export default function ManageStages() {
   const [stages, setStages] = useState([]);
@@ -93,13 +97,15 @@ export default function ManageStages() {
 
   // Delete Stage
   const handleDelete = async (id) => {
-    await deleteDoc(doc(db, "stages", id));
+    if (window.confirm("Deleting this stage cannot be undone. Continue?")) {
+      await deleteDoc(doc(db, "stages", id));
+    }
   };
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="md">
       <Typography variant="h5" gutterBottom>
-        🏫 Manage Stages
+        🚏 Manage Stages
       </Typography>
 
       {/* Add/Edit Form */}
@@ -167,29 +173,53 @@ export default function ManageStages() {
         </Button>
       </Box>
 
-      {/* List of Stages */}
-      <List>
-        {stages.map((stage) => (
-          <ListItem
-            key={stage.id}
-            secondaryAction={
-              <>
-                <IconButton onClick={() => handleEdit(stage)}>
-                  <Edit />
-                </IconButton>
-                <IconButton onClick={() => handleDelete(stage.id)}>
-                  <Delete />
-                </IconButton>
-              </>
-            }
-          >
-            <ListItemText
-              primary={`${stage.name} (Bus ${buses.find(b => b.id === stage.busId)?.number || "?"})`}
-              secondary={`Full Fee: ₹${stage.fullFee}, Installments: ₹${stage.installment1} + ₹${stage.installment2}`}
-            />
-          </ListItem>
-        ))}
-      </List>
+      {/* Grouped by Bus */}
+      {buses.map((bus) => {
+        const busStages = stages.filter((s) => s.busId === bus.id);
+
+        return (
+          <Accordion key={bus.id} disabled={busStages.length === 0}>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography>
+                Bus {bus.number} - {bus.driver}{" "}
+                <small>({busStages.length} stages)</small>
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {busStages.length === 0 ? (
+                <Alert severity="info">
+                  No stages created yet for this bus. Please add stages.
+                </Alert>
+              ) : (
+                <Paper sx={{ maxHeight: 250, overflow: "auto" }}>
+                  <List>
+                    {busStages.map((stage) => (
+                      <ListItem
+                        key={stage.id}
+                        secondaryAction={
+                          <>
+                            <IconButton onClick={() => handleEdit(stage)}>
+                              <Edit />
+                            </IconButton>
+                            <IconButton onClick={() => handleDelete(stage.id)}>
+                              <Delete />
+                            </IconButton>
+                          </>
+                        }
+                      >
+                        <ListItemText
+                          primary={`${stage.name}`}
+                          secondary={`Full Fee: ₹${stage.fullFee}, Installments: ₹${stage.installment1} + ₹${stage.installment2}`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Paper>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        );
+      })}
     </Container>
   );
 }

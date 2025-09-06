@@ -11,22 +11,20 @@ service cloud.firestore {
       );
     }
 
-    // --- Students Collection ---
     match /users/{userId} {
+      // Student creates their own profile
       allow create: if request.auth != null && request.auth.uid == userId;
 
-      // Students can read/update their own profile
-      allow read, update: if request.auth != null && request.auth.uid == userId;
-
-      allow read, update, delete: if isAdmin();
-
-      // Extra: Lock hallTicket (can't be modified after creation)
+      // Student reads/updates only their own doc (hallTicket is locked)
+      allow read: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null
-                    && request.auth.uid == userId
-                    && request.resource.data.hallTicket == resource.data.hallTicket;
+                && request.auth.uid == userId
+                && request.resource.data.hallTicket == resource.data.hallTicket;
 
-      
+      // Admin full access to all students
+      allow read, write: if isAdmin();
     }
+
 
     // --- Buses Collection ---
     match /buses/{busId} {

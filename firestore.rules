@@ -71,5 +71,22 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if false;
     }
+
+    match /payments/{paymentId} {
+     allow create: if request.auth != null && request.auth.uid == request.resource.data.studentId;
+     allow read: if request.auth != null && (request.auth.uid == resource.data.studentId || isAdmin());
+     allow update, delete: if isAdmin();
+    }
+
+    match /passes/{passId} {
+     allow read: if request.auth != null && request.auth.uid == passId;
+     allow write: if isAdmin(); // issued automatically by cloud function
+    }
+
+    allow update: if request.auth != null
+              && request.auth.uid == userId
+              && request.resource.data.hallTicket == resource.data.hallTicket
+              && request.resource.data.academicYear == resource.data.academicYear;
+
   }
 }

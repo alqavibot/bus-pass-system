@@ -1,4 +1,7 @@
+// src/pages/admin/Settings.jsx
 import React, { useState, useEffect } from "react";
+import { httpsCallable } from "firebase/functions";
+import { functions, db } from "../../firebase/config";
 import {
   Container,
   Typography,
@@ -9,56 +12,46 @@ import {
   ListItem,
   ListItemText,
   Divider,
+  CircularProgress,
 } from "@mui/material";
-import { db } from "../../firebase/config";
-import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  collection,
-  getDocs,
-} from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function Settings() {
   const [year, setYear] = useState("");
   const [currentYear, setCurrentYear] = useState("");
+  const [loading, setLoading] = useState(false); // ✅ new state
 
   // Load current academic year
   useEffect(() => {
     const fetchYear = async () => {
-      const docRef = doc(db, "settings", "academicYear");
+      const docRef = doc(db, "settings", "global"); // consistent with backend
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        setCurrentYear(snap.data().year);
+        setCurrentYear(snap.data().currentAcademicYear);
       }
     };
     fetchYear();
   }, []);
 
-  // Update Academic Year
+  // Update Academic Year via Cloud Function
   const handleUpdate = async () => {
     if (!year) return alert("Please enter a valid academic year");
 
-    // Step 1: Update settings
-    const docRef = doc(db, "settings", "academicYear");
-    await setDoc(docRef, { year }, { merge: true });
+    setLoading(true);
+    try {
+      const setYear = httpsCallable(functions, "setAcademicYear");
+      const res = await setYear({ year });
+      alert(res.data.message);
 
-    // Step 2: Expire all passes of previous year
-    if (currentYear && currentYear !== year) {
-      const passesSnap = await getDocs(collection(db, "passes"));
-      const updates = passesSnap.docs.map(async (d) => {
-        const pass = d.data();
-        if (pass.academicYear === currentYear) {
-          await updateDoc(doc(db, "passes", d.id), { status: "expired" });
-        }
-      });
-      await Promise.all(updates);
+      // Refresh UI
+      setCurrentYear(year);
+      setYear("");
+    } catch (err) {
+      console.error("Error updating year:", err);
+      alert("Error: " + err.message);
+    } finally {
+      setLoading(false);
     }
-
-    setCurrentYear(year);
-    setYear("");
-    alert("Academic Year updated successfully!");
   };
 
   return (
@@ -75,16 +68,25 @@ export default function Settings() {
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+      <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
         <TextField
           label="New Academic Year"
           placeholder="e.g. 2025-2026"
           value={year}
           onChange={(e) => setYear(e.target.value)}
           fullWidth
+          disabled={loading} // ✅ disable while loading
         />
-        <Button variant="contained" onClick={handleUpdate}>
-          Update
+        <Button
+          variant="contained"
+          onClick={handleUpdate}
+          disabled={loading} // ✅ disable button
+        >
+          {loading ? (
+            <CircularProgress size={24} sx={{ color: "white" }} />
+          ) : (
+            "Update"
+          )}
         </Button>
       </Box>
 
@@ -96,7 +98,7 @@ export default function Settings() {
           <ListItemText primary="When you change the academic year, all passes from the previous year will automatically be marked as expired." />
         </ListItem>
         <ListItem>
-          <ListItemText primary="Make sure to set this once at the beginning of every academic cycle." />
+          <ListItemText primary="This is handled securely in Cloud Functions (not on client)." />
         </ListItem>
       </List>
     </Container>

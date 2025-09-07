@@ -27,7 +27,7 @@ exports.setAcademicYear = functions.https.onCall(async (data, context) => {
     return { ok: true, message: "Academic year unchanged." };
   }
 
-  // Update settings first
+  // Update settings firstset
   await settingsRef.set(
     {
       currentAcademicYear: newYear,

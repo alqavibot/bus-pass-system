@@ -1,5 +1,5 @@
 // src/pages/admin/Settings.jsx
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { httpsCallable } from "firebase/functions";
 import { functions, db } from "../../firebase/config";
 import {
@@ -8,85 +8,68 @@ import {
   TextField,
   Button,
   Box,
+  Divider,
   List,
   ListItem,
   ListItemText,
-  Divider,
-  CircularProgress,
 } from "@mui/material";
 import { doc, getDoc } from "firebase/firestore";
 
 export default function Settings() {
   const [year, setYear] = useState("");
   const [currentYear, setCurrentYear] = useState("");
-  const [loading, setLoading] = useState(false); // ✅ new state
 
-  // Load current academic year
+  // ✅ Load current year
   useEffect(() => {
     const fetchYear = async () => {
-      const docRef = doc(db, "settings", "global"); // consistent with backend
-      const snap = await getDoc(docRef);
+      const snap = await getDoc(doc(db, "settings", "global"));
       if (snap.exists()) {
-        setCurrentYear(snap.data().currentAcademicYear);
+        setCurrentYear(snap.data().currentAcademicYear || "Not Set");
       }
     };
     fetchYear();
   }, []);
 
-  // Update Academic Year via Cloud Function
+  // ✅ Update academic year via Cloud Function
   const handleUpdate = async () => {
-    if (!year) return alert("Please enter a valid academic year");
-
-    setLoading(true);
+    if (!year) return alert("Enter a valid year (e.g., 2025-2026)");
     try {
-      const setYear = httpsCallable(functions, "setAcademicYear");
-      const res = await setYear({ year });
+      const setYearFn = httpsCallable(functions, "setAcademicYear");
+      const res = await setYearFn({ year });
       alert(res.data.message);
-
-      // Refresh UI
       setCurrentYear(year);
       setYear("");
     } catch (err) {
-      console.error("Error updating year:", err);
+      console.error(err);
       alert("Error: " + err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
-    <Container maxWidth="sm">
+    <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Typography variant="h5" gutterBottom>
         ⚙️ Admin Settings
       </Typography>
       <Divider sx={{ mb: 2 }} />
 
+      {/* Current Year */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="body1">
-          <strong>Current Academic Year:</strong>{" "}
-          {currentYear || "Not Set"}
+          <strong>Current Academic Year:</strong> {currentYear}
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 2, mb: 3, alignItems: "center" }}>
+      {/* Update Year */}
+      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
         <TextField
           label="New Academic Year"
           placeholder="e.g. 2025-2026"
           value={year}
           onChange={(e) => setYear(e.target.value)}
           fullWidth
-          disabled={loading} // ✅ disable while loading
         />
-        <Button
-          variant="contained"
-          onClick={handleUpdate}
-          disabled={loading} // ✅ disable button
-        >
-          {loading ? (
-            <CircularProgress size={24} sx={{ color: "white" }} />
-          ) : (
-            "Update"
-          )}
+        <Button variant="contained" onClick={handleUpdate}>
+          Update
         </Button>
       </Box>
 
@@ -95,10 +78,10 @@ export default function Settings() {
       </Typography>
       <List dense>
         <ListItem>
-          <ListItemText primary="When you change the academic year, all passes from the previous year will automatically be marked as expired." />
+          <ListItemText primary="When you change the academic year, all active passes from the previous year will be automatically expired." />
         </ListItem>
         <ListItem>
-          <ListItemText primary="This is handled securely in Cloud Functions (not on client)." />
+          <ListItemText primary="Students will need to pay again to receive a new pass for the new year." />
         </ListItem>
       </List>
     </Container>

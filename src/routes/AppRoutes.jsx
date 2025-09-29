@@ -8,6 +8,7 @@ import Register from "../pages/Register";
 import Profile from "../pages/Profile";
 import AdminLogin from "../pages/admin/AdminLogin";
 import StudentDashboard from "../pages/student/StudentDashboard";
+import StudentPayment from "../pages/student/StudentPayments";   // ✅ Use this only
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import ManageBuses from "../pages/admin/ManageBuses";
 import ManageStages from "../pages/admin/ManageStages";
@@ -25,11 +26,12 @@ export default function AppRoutes() {
       {/* Student routes */}
       <Route path="/profile" element={<Profile />} />
       <Route path="/student/dashboard" element={<StudentDashboard />} />
+      <Route path="/student/payment" element={<StudentPayment />} /> {/* ✅ */}
 
       {/* Admin routes */}
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* ✅ Nested Admin Dashboard with children */}
+      {/* ✅ Nested Admin Dashboard */}
       <Route path="/admin/dashboard" element={<AdminDashboard />}>
         <Route index element={<h3>Welcome, Admin! 👋 Select an option from the sidebar.</h3>} />
         <Route path="buses" element={<ManageBuses />} />

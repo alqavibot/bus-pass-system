@@ -21,7 +21,6 @@ import {
   doc,
   setDoc,
   updateDoc,
-  getDoc,           // ✅ added
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../../firebase/config";
@@ -65,33 +64,50 @@ export default function ManageStudents() {
 
   const handleAssignSave = async () => {
     if (!selected) return;
+
     const busDoc = buses.find((b) => b.id === selectedBusId);
     const stageObj = busDoc?.stages?.find((s) => s.id === selectedStageId);
 
+    if (!busDoc || !stageObj) {
+      alert("Please select both bus and stage.");
+      return;
+    }
+
     const update = {
       busId: selectedBusId,
-      busNumber: busDoc?.busNumber || null,
+      busNumber: busDoc.busNumber,
       stageId: selectedStageId,
-      stage: stageObj?.stageName || null,
-      fee: stageObj?.fee ?? null,
+      stage: stageObj.stageName,
+      fee: stageObj.fee,
+      paymentStatus: "pending",
+      passStatus: "Not Issued",
       updatedAt: serverTimestamp(),
     };
 
     await updateDoc(doc(db, "users", selected.id), update);
     setAssignOpen(false);
+    alert(`Assigned Bus ${busDoc.busNumber}, Stage ${stageObj.stageName}`);
   };
 
-  // Manual Issue Pass (only if automation failed)
+  const removeAssignment = async (student) => {
+    if (!window.confirm("Remove bus & stage assignment for this student?"))
+      return;
+    await updateDoc(doc(db, "users", student.id), {
+      busId: null,
+      busNumber: null,
+      stageId: null,
+      stage: null,
+      fee: null,
+      paymentStatus: "pending",
+      passStatus: "Not Issued",
+      updatedAt: serverTimestamp(),
+    });
+    alert("Assignment removed.");
+  };
+
+  // Manual Issue Pass (fallback if auto fails)
   const issuePass = async (student) => {
     if (!window.confirm("Issue pass for this student?")) return;
-
-    // ✅ fetch current academic year
-    const settingsRef = doc(db, "settings", "global");
-    const settingsSnap = await getDoc(settingsRef);
-    const currentYear = settingsSnap.exists()
-      ? settingsSnap.data().currentAcademicYear
-      : null;
-
     const token = generatePassToken(student.id);
 
     const passDoc = {
@@ -101,16 +117,14 @@ export default function ManageStudents() {
       studentId: student.id,
       studentName: student.name,
       hallTicket: student.hallTicket,
-      academicYear: currentYear, // ✅ store academic year
+      academicYear: student.academicYear || null,
       issuedAt: serverTimestamp(),
     };
 
     await setDoc(doc(db, "passes", student.id), passDoc);
-
     await updateDoc(doc(db, "users", student.id), {
       passStatus: "Issued",
       passToken: token,
-      academicYear: currentYear, // ✅ keep in user too
       updatedAt: serverTimestamp(),
     });
 
@@ -141,17 +155,26 @@ export default function ManageStudents() {
           .map((s) => (
             <ListItem
               key={s.id}
+              sx={{ alignItems: "flex-start", mb: 2 }} // extra space between details and buttons
               secondaryAction={
-                <>
+                <Box sx={{ display: "flex", gap: 1 }}>
                   <Button
                     onClick={() => openAssign(s)}
                     variant="outlined"
-                    sx={{ mr: 1 }}
+                    sx={{ minWidth: 100 }}
                   >
-                    Assign Bus
+                    Assign
                   </Button>
 
-                  {/* Manual Issue button only when payment success but pass not issued */}
+                  <Button
+                    onClick={() => removeAssignment(s)}
+                    variant="outlined"
+                    color="error"
+                    sx={{ minWidth: 100 }}
+                  >
+                    Remove
+                  </Button>
+
                   {s.paymentStatus === "success" &&
                     s.passStatus !== "Issued" && (
                       <Button
@@ -162,16 +185,16 @@ export default function ManageStudents() {
                         Issue Pass
                       </Button>
                     )}
-                </>
+                </Box>
               }
             >
               <ListItemText
                 primary={`${s.name} (${s.hallTicket || "no HT"})`}
                 secondary={`Bus: ${s.busNumber || "-"} • Stage: ${
                   s.stage || "-"
-                } • Payment: ${s.paymentStatus || "pending"} • Pass: ${
-                  s.passStatus || "Not Issued"
-                }`}
+                } • Fee: ₹${s.fee || "-"} • Payment: ${
+                  s.paymentStatus || "pending"
+                } • Pass: ${s.passStatus || "Not Issued"}`}
               />
             </ListItem>
           ))}
@@ -181,11 +204,15 @@ export default function ManageStudents() {
       <Dialog open={assignOpen} onClose={() => setAssignOpen(false)}>
         <DialogTitle>Assign Bus & Stage</DialogTitle>
         <DialogContent>
+          {/* Bus Select */}
           <TextField
             select
             label="Bus"
             value={selectedBusId}
-            onChange={(e) => setSelectedBusId(e.target.value)}
+            onChange={(e) => {
+              setSelectedBusId(e.target.value);
+              setSelectedStageId(""); // reset stage
+            }}
             fullWidth
             sx={{ mb: 2 }}
           >
@@ -197,6 +224,7 @@ export default function ManageStudents() {
             ))}
           </TextField>
 
+          {/* Stage Select */}
           <TextField
             select
             label="Stage"
@@ -208,7 +236,7 @@ export default function ManageStudents() {
             {(buses.find((b) => b.id === selectedBusId)?.stages || []).map(
               (s) => (
                 <MenuItem key={s.id} value={s.id}>
-                  {s.stageName} (₹{s.fee})
+                  {s.stageName} (₹{s.fee || 0})
                 </MenuItem>
               )
             )}
@@ -216,7 +244,11 @@ export default function ManageStudents() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAssignOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleAssignSave}>
+          <Button
+            variant="contained"
+            onClick={handleAssignSave}
+            disabled={!selectedBusId || !selectedStageId}
+          >
             Assign
           </Button>
         </DialogActions>

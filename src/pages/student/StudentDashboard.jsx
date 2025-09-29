@@ -9,7 +9,6 @@ import {
   query,
   where,
   orderBy,
-  limit,
 } from "firebase/firestore";
 import {
   Container,
@@ -27,40 +26,33 @@ import { useAuth } from "../../context/AuthContext";
 export default function StudentDashboard() {
   const { currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [payment, setPayment] = useState(null);
+  const [payments, setPayments] = useState([]);   // ✅ list, not single
   const [pass, setPass] = useState(null);
   const navigate = useNavigate();
 
   // ✅ Real-time Profile Updates
   useEffect(() => {
     if (!currentUser) return;
-
     const unsub = onSnapshot(doc(db, "users", currentUser.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        setProfile(docSnap.data());
-      }
+      if (docSnap.exists()) setProfile(docSnap.data());
     });
-
     return () => unsub();
   }, [currentUser]);
 
-  // ✅ Real-time Payment Updates (latest one)
+  // ✅ Real-time Payment History
   useEffect(() => {
     if (!currentUser) return;
 
     const q = query(
       collection(db, "payments"),
       where("studentId", "==", currentUser.uid),
-      orderBy("timestamp", "desc"),
-      limit(1)
+      orderBy("timestamp", "desc")
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      if (!snap.empty) {
-        setPayment(snap.docs[0].data());
-      } else {
-        setPayment(null);
-      }
+      const arr = [];
+      snap.forEach((d) => arr.push(d.data()));
+      setPayments(arr);
     });
 
     return () => unsub();
@@ -69,15 +61,10 @@ export default function StudentDashboard() {
   // ✅ Real-time Bus Pass Updates
   useEffect(() => {
     if (!currentUser) return;
-
     const unsub = onSnapshot(doc(db, "passes", currentUser.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        setPass(docSnap.data());
-      } else {
-        setPass(null);
-      }
+      if (docSnap.exists()) setPass(docSnap.data());
+      else setPass(null);
     });
-
     return () => unsub();
   }, [currentUser]);
 
@@ -127,9 +114,18 @@ export default function StudentDashboard() {
           <Typography variant="h6">Bus Information</Typography>
           {profile ? (
             <>
-              <Typography>Bus Number: {profile.busNo || "Not assigned"}</Typography>
+              <Typography>
+                Bus Number: {profile.busNumber || "Not assigned"}
+              </Typography>
               <Typography>Stage: {profile.stage || "N/A"}</Typography>
-              <Typography>Fee: {profile.fee || "N/A"} ₹</Typography>
+              <Typography>Fee: {profile.fee ? `₹${profile.fee}` : "N/A"}</Typography>
+              <Button
+                variant="contained"
+                sx={{ mt: 2 }}
+                onClick={() => navigate("/student/payment")}
+              >
+                Make Payment
+              </Button>
             </>
           ) : (
             <Typography color="text.secondary">No bus data found.</Typography>
@@ -140,27 +136,22 @@ export default function StudentDashboard() {
       {/* Payment Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6">Payment</Typography>
-          {payment ? (
-            <>
-              <Typography>Amount Paid: {payment.amount} ₹</Typography>
-              <Typography>Mode: {payment.mode}</Typography>
-              <Typography>Status: {payment.status}</Typography>
-              <Typography>
-                Date: {payment.timestamp?.toDate().toLocaleString()}
-              </Typography>
-            </>
+          <Typography variant="h6">Payment History</Typography>
+          {payments.length > 0 ? (
+            payments.map((p, idx) => (
+              <Card key={idx} sx={{ mb: 2, p: 1, bgcolor: "#f9f9f9" }}>
+                <Typography>Amount: ₹{p.amount}</Typography>
+                <Typography>Mode: {p.mode}</Typography>
+                <Typography>Status: {p.status}</Typography>
+                <Typography>
+                  Date: {p.timestamp?.toDate().toLocaleString()}
+                </Typography>
+              </Card>
+            ))
           ) : (
-            <>
-              <Typography color="text.secondary">No payments found.</Typography>
-              <Button
-                variant="contained"
-                sx={{ mt: 2 }}
-                onClick={() => navigate("/payment")}
-              >
-                Make Payment
-              </Button>
-            </>
+            <Typography color="text.secondary">
+              No payment records found.
+            </Typography>
           )}
         </CardContent>
       </Card>

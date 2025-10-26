@@ -15,6 +15,9 @@
     "firebase": "^12.2.1",
     "firebase-admin": "^13.5.0",
     "firebase-functions": "^6.4.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
+    "qrcode.react": "^4.2.0",
     "razorpay": "^2.9.6",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
@@ -25,6 +28,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "start:network": "set HOST=0.0.0.0 && react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

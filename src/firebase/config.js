@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAYw3g9OEqZgVTsJ7K97hmXUAtSRRl5iGQ",
   authDomain: "bus-pass-system-a797e.firebaseapp.com",
   projectId: "bus-pass-system-a797e",
-  storageBucket: "bus-pass-system-a797e.firebasestorage.app",
+  storageBucket: "bus-pass-system-a797e.appspot.com",
   messagingSenderId: "831526176024",
   appId: "1:831526176024:web:4ed6f427c1e7fceaca0a6d",
   measurementId: "G-LHELK53T4H"

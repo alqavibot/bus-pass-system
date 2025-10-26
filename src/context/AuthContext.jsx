@@ -27,8 +27,8 @@ export const AuthProvider = ({ children }) => {
           const data = docSnap.data();
           setUserDoc(data);
 
-          // 🚨 redirect if profile is incomplete
-          if (!data.profileCompleted) {
+          // Only redirect students to profile if incomplete, not admins
+          if (data.role === "student" && !data.profileCompleted) {
             navigate("/profile");
           }
         }

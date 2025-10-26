@@ -1,13 +1,16 @@
 import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Box } from "@mui/material";
+import { TextField, Button, Container, Typography, Box, Card, CardContent, MenuItem } from "@mui/material";
 import { auth, db } from "../firebase/config";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
+const BRANCHES = ["CSE", "IT", "AIML", "ECE", "DIPLOMA", "PHARMACY", "EEE"];
+
 const Register = () => {
   const [name, setName] = useState("");
   const [hallTicket, setHallTicket] = useState("");
+  const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
   const [section, setSection] = useState("");
   const [email, setEmail] = useState("");
@@ -28,10 +31,12 @@ const Register = () => {
       await setDoc(doc(db, "users", user.uid), {
         name,
         hallTicket,
+        branch,
         year,
         section,
         email,
         role: "student",
+        profileCompleted: true, // Mark profile as completed
         createdAt: new Date()
       });
 
@@ -46,12 +51,16 @@ const Register = () => {
   };
 
   return (
-    <Container maxWidth="xs">
-      <Box sx={{ mt: 10, p: 3, boxShadow: 3, borderRadius: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Student Registration
-        </Typography>
-        <form onSubmit={handleRegister}>
+    <Container maxWidth="md" sx={{ display: "flex", justifyContent: "center" }}>
+      <Card sx={{ mt: 8, width: 640 }}>
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+            Student Registration
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Create your account to access the bus pass system
+          </Typography>
+          <form onSubmit={handleRegister}>
           <TextField
             label="Full Name"
             fullWidth
@@ -68,6 +77,23 @@ const Register = () => {
             onChange={(e) => setHallTicket(e.target.value)}
             required
           />
+          <TextField
+            select
+            label="Branch"
+            fullWidth
+            margin="normal"
+            value={branch}
+            onChange={(e) => setBranch(e.target.value)}
+            required
+            helperText="Select your branch/department"
+          >
+            <MenuItem value="">-- Select Branch --</MenuItem>
+            {BRANCHES.map((branchName) => (
+              <MenuItem key={branchName} value={branchName}>
+                {branchName}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Year"
             fullWidth
@@ -113,7 +139,8 @@ const Register = () => {
             {loading ? "Registering..." : "Register"}
           </Button>
         </form>
-      </Box>
+        </CardContent>
+      </Card>
     </Container>
   );
 };

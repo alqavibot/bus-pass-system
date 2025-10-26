@@ -3,16 +3,19 @@ import React from "react";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AppRoutes from "./routes/AppRoutes";
+import { Container, Box } from "@mui/material";
 
 function App() {
   return (
-    <div className="app-container">
+    <Box display="flex" flexDirection="column" minHeight="100vh">
       <Navbar />
-      <main className="content">
-        <AppRoutes />   {/* ✅ no <Router> here */}
-      </main>
+      <Box component="main" flexGrow={1} sx={{ py: 4 }}>
+        <Container>
+          <AppRoutes />   {/* ✅ no <Router> here */}
+        </Container>
+      </Box>
       <Footer />
-    </div>
+    </Box>
   );
 }
 

@@ -14,6 +14,13 @@ import ManageBuses from "../pages/admin/ManageBuses";
 import ManageStages from "../pages/admin/ManageStages";
 import ManageStudents from "../pages/admin/ManageStudents";
 import Settings from "../pages/admin/Settings";
+import CleanupData from "../pages/admin/CleanupData";
+import PaymentOptions from "../pages/student/PaymentOptions";
+import MyPass from "../pages/MyPass";
+import PassVerification from "../pages/PassVerification";
+import RenewPass from "../pages/student/RenewPass";
+import ProtectedRoute from "../components/ProtectedRoute";
+
 
 export default function AppRoutes() {
   return (
@@ -22,22 +29,76 @@ export default function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/verify/:studentId" element={<PassVerification />} />
 
-      {/* Student routes */}
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/student/dashboard" element={<StudentDashboard />} />
-      <Route path="/student/payment" element={<StudentPayment />} /> {/* ✅ */}
+      {/* Student routes (protected) */}
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/dashboard"
+        element={
+          <ProtectedRoute>
+            <StudentDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/student/payment"
+        element={
+          <ProtectedRoute>
+            <StudentPayment />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/payment/options"
+        element={
+          <ProtectedRoute>
+            <PaymentOptions />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mypas"
+        element={
+          <ProtectedRoute>
+            <MyPass />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/renew-pass"
+        element={
+          <ProtectedRoute>
+            <RenewPass />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Admin routes */}
       <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* ✅ Nested Admin Dashboard */}
-      <Route path="/admin/dashboard" element={<AdminDashboard />}>
+      {/* ✅ Nested Admin Dashboard (protected by role) */}
+      <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedRoute role="admin">
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<h3>Welcome, Admin! 👋 Select an option from the sidebar.</h3>} />
         <Route path="buses" element={<ManageBuses />} />
         <Route path="stages" element={<ManageStages />} />
         <Route path="students" element={<ManageStudents />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="cleanup" element={<CleanupData />} />
       </Route>
     </Routes>
   );

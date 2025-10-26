@@ -1,18 +1,21 @@
 // src/pages/Profile.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { TextField, Button, Box, Typography, Container } from "@mui/material";
+import { TextField, Button, Box, Typography, Container, MenuItem } from "@mui/material";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/config";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 
+const BRANCHES = ["CSE", "IT", "AIML", "ECE", "DIPLOMA", "PHARMACY", "EEE"];
+
 export default function Profile() {
-  const { currentUser } = useAuth();
+  const { currentUser} = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     name: "",
     hallTicket: "",
+    branch: "",
     year: "",
     section: "",
     busNumber: "",
@@ -36,6 +39,7 @@ export default function Profile() {
           setForm({
             name: data.name || "",
             hallTicket: data.hallTicket || "",
+            branch: data.branch || "",
             year: data.year || "",
             section: data.section || "",
             busNumber: data.busNumber || "",
@@ -133,6 +137,25 @@ export default function Profile() {
           )}
 
           <TextField
+            select
+            label="Branch"
+            name="branch"
+            value={form.branch}
+            onChange={handleChange}
+            fullWidth
+            margin="normal"
+            required
+            helperText="Select your branch/department"
+          >
+            <MenuItem value="">-- Select Branch --</MenuItem>
+            {BRANCHES.map((branchName) => (
+              <MenuItem key={branchName} value={branchName}>
+                {branchName}
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <TextField
             label="Year"
             name="year"
             value={form.year}
@@ -153,23 +176,23 @@ export default function Profile() {
           />
 
           <TextField
-            label="Bus Number"
+            label="Bus Number (Optional - Admin will assign)"
             name="busNumber"
             value={form.busNumber}
             onChange={handleChange}
             fullWidth
             margin="normal"
-            required
+            helperText="Leave empty - Admin will assign bus and stage"
           />
 
           <TextField
-            label="Stage Name"
+            label="Stage Name (Optional - Admin will assign)"
             name="stage"
             value={form.stage}
             onChange={handleChange}
             fullWidth
             margin="normal"
-            required
+            helperText="Leave empty - Admin will assign bus and stage"
           />
 
           <Button

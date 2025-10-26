@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Box } from "@mui/material";
+import { TextField, Button, Container, Typography, Box, Card, CardContent } from "@mui/material";
 import { auth, db } from "../firebase/config";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -42,42 +42,47 @@ const Login = () => {
   };
 
   return (
-    <Container maxWidth="xs">
-      <Box sx={{ mt: 10, p: 3, boxShadow: 3, borderRadius: 2 }}>
-        <Typography variant="h5" gutterBottom>
-          Student Login
-        </Typography>
-        <form onSubmit={handleLogin}>
-          <TextField
-            label="Email"
-            type="email"
-            fullWidth
-            margin="normal"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <TextField
-            label="Password"
-            type="password"
-            fullWidth
-            margin="normal"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <Button
-            type="submit"
-            fullWidth
-            variant="contained"
-            color="primary"
-            disabled={loading}
-            sx={{ mt: 2 }}
-          >
-            {loading ? "Logging in..." : "Login"}
-          </Button>
-        </form>
-      </Box>
+    <Container maxWidth="sm" sx={{ display: "flex", justifyContent: "center" }}>
+      <Card sx={{ mt: 8, width: 480 }}>
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+            Student Login
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Sign in with your registered email and password
+          </Typography>
+          <form onSubmit={handleLogin}>
+            <TextField
+              label="Email"
+              type="email"
+              fullWidth
+              margin="normal"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <TextField
+              label="Password"
+              type="password"
+              fullWidth
+              margin="normal"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              color="primary"
+              disabled={loading}
+              sx={{ mt: 2 }}
+            >
+              {loading ? "Logging in..." : "Login"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </Container>
   );
 };

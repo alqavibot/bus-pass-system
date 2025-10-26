@@ -45,6 +45,9 @@ export default function AdminDashboard() {
             <Button component={Link} to="settings" variant="outlined">
               Settings
             </Button>
+            <Button component={Link} to="cleanup" variant="outlined" color="warning">
+              🗑️ Cleanup Data
+            </Button>
 
             <Button
               variant="contained"

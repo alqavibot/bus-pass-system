@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../firebase/config";
+import { auth, db } from "../../firebase/config";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ADMIN_EMAIL } from "../../utils/constants";
 import {
   Container,
@@ -25,11 +26,19 @@ export default function AdminLogin() {
     try {
       const userCred = await signInWithEmailAndPassword(auth, email, password);
 
-      // ✅ check if the email matches admin email
-      if (userCred.user.email === ADMIN_EMAIL) {
-        navigate("/admin/dashboard");
+      // Check if user exists in Firestore and has admin role
+      const userDocRef = doc(db, "users", userCred.user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        if (userData.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          setError("You are not authorized as Admin.");
+        }
       } else {
-        setError("You are not authorized as Admin.");
+        setError("Admin user not found. Please contact system administrator to create admin account in Firebase console.");
       }
     } catch (err) {
       setError(err.message);
@@ -49,6 +58,12 @@ export default function AdminLogin() {
       >
         <Typography variant="h5" gutterBottom>
           Admin Login
+        </Typography>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Admin accounts must be created in Firebase Console first.
+          <br />
+          Contact system administrator for admin credentials.
         </Typography>
 
         {error && (

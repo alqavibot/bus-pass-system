@@ -127,53 +127,63 @@ export default function PaymentOptions() {
 
   // ✅ Real-time payment status tracking
   useEffect(() => {
-    if (!currentPaymentId || !loading) return; // Only track during active payment
+    // Only start tracking after payment is created (when we have both ID and loading state)
+    if (!currentPaymentId || !currentUser) return;
 
     const paymentRef = doc(db, "payments", currentPaymentId);
-    const unsubscribe = onSnapshot(
-      paymentRef, 
-      (doc) => {
-        if (doc.exists()) {
-          const payment = doc.data();
-          
-          // Only track if it's the current user's payment
-          if (payment.studentId !== currentUser?.uid) return;
-          
-          setPaymentStatus(payment.status);
-          
-          if (payment.status === "success") {
-            setPaymentStep(3);
-            setSnackbarMessage("✅ Payment successful! Pass issued.");
-            setSnackbarSeverity("success");
-            setSnackbarOpen(true);
+    let unsubscribe = null;
+    
+    // Small delay to ensure Firestore has indexed the document
+    const timeoutId = setTimeout(() => {
+      unsubscribe = onSnapshot(
+        paymentRef, 
+        (doc) => {
+          if (doc.exists()) {
+            const payment = doc.data();
             
-            // Navigate to dashboard after 2 seconds
-            setTimeout(() => {
-              navigate("/student/dashboard");
-            }, 2000);
-          } else if (payment.status === "failed") {
-            setPaymentStep(0);
-            setSnackbarMessage("❌ Payment failed. Please try again.");
-            setSnackbarSeverity("error");
-            setSnackbarOpen(true);
-            setLoading(false);
+            // Only track if it's the current user's payment
+            if (payment.studentId !== currentUser?.uid) return;
+            
+            setPaymentStatus(payment.status);
+            
+            if (payment.status === "success") {
+              setPaymentStep(3);
+              setSnackbarMessage("✅ Payment successful! Pass issued.");
+              setSnackbarSeverity("success");
+              setSnackbarOpen(true);
+              setLoading(false);
+              
+              // Navigate to dashboard after 1.5 seconds
+              setTimeout(() => {
+                navigate("/student/dashboard");
+              }, 1500);
+            } else if (payment.status === "failed") {
+              setPaymentStep(0);
+              setSnackbarMessage("❌ Payment failed. Please try again.");
+              setSnackbarSeverity("error");
+              setSnackbarOpen(true);
+              setLoading(false);
+            } else if (payment.status === "processing") {
+              setPaymentStep(2);
+            } else if (payment.status === "pending") {
+              setPaymentStep(1);
+            }
+          }
+        },
+        (error) => {
+          // Silently log errors - document might not be readable immediately
+          if (error.code !== 'permission-denied') {
+            console.error("Payment listener error:", error);
           }
         }
-      },
-      (error) => {
-        console.error("Payment listener error:", error);
-        // Only show error if we're actually processing a payment
-        if (loading) {
-          setSnackbarMessage("Error tracking payment status");
-          setSnackbarSeverity("error");
-          setSnackbarOpen(true);
-          setLoading(false);
-        }
-      }
-    );
+      );
+    }, 100); // Minimal delay for Firestore indexing
 
-    return () => unsubscribe();
-  }, [currentPaymentId, navigate, loading, currentUser]);
+    return () => {
+      clearTimeout(timeoutId);
+      if (unsubscribe) unsubscribe();
+    };
+  }, [currentPaymentId, navigate, currentUser]);
 
   if (!bus || !stage) {
     return (
@@ -278,13 +288,12 @@ export default function PaymentOptions() {
 
       const paymentId = `${currentUser.uid}_${Date.now()}`;
       const paymentRef = doc(db, "payments", paymentId);
-      setCurrentPaymentId(paymentId);
 
       // Generate receipt number
       const receiptNumber = await generateReceiptNumber(academicYear, currentUser.uid);
 
       // 1. Create Pending Payment
-      setPaymentStep(2); // Payment processing
+      setPaymentStep(1); // Payment initiated
       await setDoc(paymentRef, {
         paymentId,
         receiptNumber,
@@ -304,12 +313,15 @@ export default function PaymentOptions() {
         createdAt: serverTimestamp(),
       });
 
+      // ✅ Set payment ID AFTER document is created to start listener
+      setCurrentPaymentId(paymentId);
+
       // 2. ✅ Enhanced Payment Flow with real-time updates
       setTimeout(async () => {
-        const success = Math.random() > 0.2; // 80% success simulation
+        const success = Math.random() > 0.05; // 95% success simulation
         
         if (success) {
-          // Update payment status
+          // Update payment status to processing
           await setDoc(
             paymentRef,
             {
@@ -319,7 +331,7 @@ export default function PaymentOptions() {
             { merge: true }
           );
 
-          // Simulate processing delay
+          // Simulate quick processing delay
           setTimeout(async () => {
             await setDoc(
               paymentRef,
@@ -332,6 +344,17 @@ export default function PaymentOptions() {
 
             // Auto Issue Pass with DUE/NO DUE status
             const token = generatePassToken(currentUser.uid);
+            
+            // Determine payment completion method
+            let paymentCompletionMethod = "";
+            if (paymentMode === "TOTAL") {
+              paymentCompletionMethod = "Total Payment (One Time)";
+            } else if (paymentMode === "INSTALLMENT" && installmentType === "SECOND_SEM") {
+              paymentCompletionMethod = "Installment Payment (2 Semesters)";
+            } else if (paymentMode === "INSTALLMENT" && installmentType === "FIRST_SEM") {
+              paymentCompletionMethod = "Installment Payment (1st Semester)";
+            }
+            
             await setDoc(doc(db, "passes", currentUser.uid), {
               passId: token,
               passToken: token,
@@ -341,13 +364,54 @@ export default function PaymentOptions() {
               studentId: currentUser.uid,
               studentName: currentUser.displayName || "Student",
               busNumber: bus.number,
+              busId: bus.id,
               stage: stage.name,
+              stageId: stage.id,
               academicYear,
               issuedAt: serverTimestamp(),
               lastPaymentAmount: amount,
               lastPaymentDate: new Date(),
+              paymentMethod: paymentCompletionMethod, // How payment was completed
             });
-          }, 1000);
+
+            // ✅ UPDATE USER PROFILE with bus and stage information
+            try {
+              // Calculate total paid for this academic year
+              const currentYearSuccessPayments = paymentHistory.filter(
+                p => p.status === "success" && p.academicYear === academicYear
+              );
+              const previousPaid = currentYearSuccessPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+              const totalPaidAmount = previousPaid + Number(amount);
+              
+              // Get current profile to check if academicYear needs updating
+              const profileSnap = await getDoc(doc(db, "users", currentUser.uid));
+              const profileData = profileSnap.data();
+              
+              // Prepare update data
+              const updateData = {
+                busNumber: bus.number,
+                busId: bus.id,
+                stage: stage.name,
+                stageId: stage.id,
+                fee: totalPaidAmount, // Total amount paid so far
+                lastPaymentDate: new Date(),
+              };
+              
+              // Only update academicYear if it's not set or different
+              if (!profileData?.academicYear || profileData.academicYear !== academicYear) {
+                updateData.academicYear = academicYear;
+              }
+              
+              await setDoc(
+                doc(db, "users", currentUser.uid),
+                updateData,
+                { merge: true }
+              );
+            } catch (profileError) {
+              console.error("Profile update error (non-critical):", profileError);
+              // Continue even if profile update fails - pass is already issued
+            }
+          }, 800); // Reduced from 1000ms to 800ms
         } else {
           await setDoc(
             paymentRef,
@@ -359,7 +423,7 @@ export default function PaymentOptions() {
           );
         }
         setLoading(false);
-      }, 2000);
+      }, 1000); // Reduced from 2000ms to 1000ms
     } catch (err) {
       console.error(err);
       alert("Error: " + err.message);
@@ -509,48 +573,67 @@ export default function PaymentOptions() {
               value={paymentMode}
               onChange={(e) => {
                 setPaymentMode(e.target.value);
-                setInstallmentType(""); // Reset installment type when payment mode changes
+                // Auto-select second installment if first is already paid
+                if (e.target.value === "INSTALLMENT" && firstInstallmentPaid) {
+                  setInstallmentType("SECOND_SEM");
+                } else {
+                  setInstallmentType("");
+                }
               }}
               fullWidth
               sx={{ mb: 2 }}
+              disabled={
+                // Disable TOTAL if first installment is already paid
+                paymentHistory.filter(p => p.academicYear === academicYear).some(
+                  p => p.paymentMode === "TOTAL" || 
+                     (p.paymentMode === "INSTALLMENT" && p.installmentType === "SECOND_SEM")
+                )
+              }
             >
-              <MenuItem value="TOTAL">Total Payment (₹{stage.fullFee}) - NO DUE Pass</MenuItem>
+              <MenuItem 
+                value="TOTAL" 
+                disabled={firstInstallmentPaid}
+              >
+                Total Payment (₹{stage.fullFee}) - NO DUE Pass
+                {firstInstallmentPaid && " (Already paid first installment)"}
+              </MenuItem>
               <MenuItem value="INSTALLMENT">Installment Payment</MenuItem>
             </TextField>
 
             {paymentMode === "INSTALLMENT" && (
-              <TextField
-                select
-                label="Installment Type"
-                value={installmentType}
-                onChange={(e) => setInstallmentType(e.target.value)}
-                fullWidth
-                sx={{ mb: 2 }}
-              >
-                <MenuItem value="FIRST_SEM">First Semester (₹{stage.installment1}) - DUE Pass</MenuItem>
-                <MenuItem 
-                  value="SECOND_SEM" 
-                  disabled={!firstInstallmentPaid}
-                >
-                  Second Semester (₹{stage.installment2}) - NO DUE Pass
-                  {!firstInstallmentPaid && " (Pay First Semester First)"}
-                </MenuItem>
-              </TextField>
-            )}
-
-            {/* Show installment eligibility status */}
-            {paymentMode === "INSTALLMENT" && (
-              <Box sx={{ mb: 2 }}>
+              <>
                 {firstInstallmentPaid ? (
-                  <Alert severity="success" sx={{ mb: 1 }}>
-                    ✅ First Semester installment paid. You can now pay Second Semester.
+                  // If first installment paid, directly show second installment payment info
+                  <Alert severity="info" sx={{ mb: 2 }}>
+                    <Typography variant="body2" gutterBottom>
+                      <strong>✅ First Semester Paid (₹{stage.installment1})</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      <strong>Due Amount: ₹{stage.installment2}</strong> (Second Semester)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Pay the remaining installment to clear all dues.
+                    </Typography>
                   </Alert>
                 ) : (
-                  <Alert severity="warning" sx={{ mb: 1 }}>
-                    ⚠️ You must pay First Semester installment before Second Semester.
-                  </Alert>
+                  <TextField
+                    select
+                    label="Installment Type"
+                    value={installmentType}
+                    onChange={(e) => setInstallmentType(e.target.value)}
+                    fullWidth
+                    sx={{ mb: 2 }}
+                  >
+                    <MenuItem value="FIRST_SEM">First Semester (₹{stage.installment1}) - DUE Pass</MenuItem>
+                    <MenuItem 
+                      value="SECOND_SEM" 
+                      disabled={true}
+                    >
+                      Second Semester (₹{stage.installment2}) - Pay First Semester First
+                    </MenuItem>
+                  </TextField>
                 )}
-              </Box>
+              </>
             )}
 
             {paymentMode && (
@@ -559,14 +642,30 @@ export default function PaymentOptions() {
                   Payment Summary:
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Amount:</strong> ₹{paymentMode === "TOTAL" ? stage.fullFee : installmentType === "FIRST_SEM" ? stage.installment1 : stage.installment2}
+                  <strong>Amount:</strong> ₹{
+                    paymentMode === "TOTAL" 
+                      ? stage.fullFee 
+                      : (paymentMode === "INSTALLMENT" && firstInstallmentPaid)
+                        ? stage.installment2  // Auto-show second installment amount
+                        : installmentType === "FIRST_SEM" 
+                          ? stage.installment1 
+                          : stage.installment2
+                  }
                 </Typography>
                 <Typography variant="body2">
-                  <strong>Pass Status:</strong> {paymentMode === "TOTAL" ? "NO DUE" : installmentType === "FIRST_SEM" ? "DUE" : "NO DUE"}
+                  <strong>Pass Status After Payment:</strong> {
+                    paymentMode === "TOTAL" 
+                      ? "NO DUE" 
+                      : (paymentMode === "INSTALLMENT" && firstInstallmentPaid)
+                        ? "NO DUE"  // Second installment clears dues
+                        : installmentType === "FIRST_SEM" 
+                          ? "DUE" 
+                          : "NO DUE"
+                  }
                 </Typography>
-                {paymentMode === "INSTALLMENT" && installmentType === "FIRST_SEM" && (
+                {paymentMode === "INSTALLMENT" && installmentType === "FIRST_SEM" && !firstInstallmentPaid && (
                   <Typography variant="body2" color="warning.main">
-                    <strong>Due Amount:</strong> ₹{stage.installment2} (Second Semester)
+                    <strong>Remaining Due:</strong> ₹{stage.installment2} (Second Semester)
                   </Typography>
                 )}
               </Box>

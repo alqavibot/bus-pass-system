@@ -19,6 +19,7 @@ import {
 import { QRCodeCanvas } from "qrcode.react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { useNotification } from "../context/NotificationContext";
 
 /*
   PassCard props:
@@ -27,6 +28,7 @@ import jsPDF from "jspdf";
 
 export default function PassCard({ profile }) {
   const passRef = useRef();
+  const { showNotification } = useNotification();
   
   // Determine actual pass status
   const isExpired = profile.isExpired || profile.status === "expired";
@@ -38,6 +40,8 @@ export default function PassCard({ profile }) {
   const downloadPass = async () => {
     if (!passRef.current) return;
     try {
+      showNotification("📥 Generating PDF... Please wait", "info", 2000);
+      
       // render with a higher scale for quality
       const canvas = await html2canvas(passRef.current, { scale: 2 });
       const imgData = canvas.toDataURL("image/png");
@@ -56,9 +60,11 @@ export default function PassCard({ profile }) {
       pdf.addImage(imgData, "PNG", 0, 0, mmWidth, mmHeight);
       const filename = `bus-pass-${profile.hallticket || profile.uid || "student"}.pdf`;
       pdf.save(filename);
+      
+      showNotification("✅ Bus pass downloaded successfully!", "success");
     } catch (err) {
       console.error("Download pass failed:", err);
-      alert("Failed to download pass. Check console for details.");
+      showNotification("❌ Failed to download pass. Please try again.", "error");
     }
   };
 
@@ -68,7 +74,7 @@ export default function PassCard({ profile }) {
     // Create a print-specific window
     const printWindow = window.open('', '', 'width=800,height=600');
     if (!printWindow) {
-      alert("Please allow pop-ups to print the pass.");
+      showNotification("⚠️ Please allow pop-ups to print the pass.", "warning");
       return;
     }
 
@@ -218,11 +224,11 @@ export default function PassCard({ profile }) {
                     Amount Paid
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    {profile.lastPaymentAmount ? `₹${profile.lastPaymentAmount}` : "-"}
+                    {profile.lastPaymentAmount ? `₹${Number(profile.lastPaymentAmount)}` : "-"}
                   </Typography>
                 </Box>
 
-                <Box sx={{ gridColumn: 'span 2' }}>
+                <Box>
                   <Typography variant="caption" color="text.secondary">
                     Payment Date
                   </Typography>
@@ -234,11 +240,20 @@ export default function PassCard({ profile }) {
                     ) : "-"}
                   </Typography>
                 </Box>
+                
+                <Box sx={{ gridColumn: 'span 2' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Payment Method
+                  </Typography>
+                  <Typography variant="body2" fontWeight={600}>
+                    {profile.paymentMethod || "One Time Payment"}
+                  </Typography>
+                </Box>
               </Box>
 
               {/* Due Amount Warning */}
               {profile.dueAmount !== undefined && profile.dueAmount !== null && (
-                profile.dueAmount > 0 ? (
+                Number(profile.dueAmount) > 0 ? (
                   <Box sx={{ 
                     mt: 2, 
                     p: 1.5, 
@@ -247,7 +262,7 @@ export default function PassCard({ profile }) {
                     border: '1px solid #ff9800'
                   }}>
                     <Typography variant="body2" color="warning.dark" fontWeight={700}>
-                      ⚠️ Due Amount: ₹{profile.dueAmount}
+                      ⚠️ Due Amount: ₹{Number(profile.dueAmount)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       Pay second semester fee to clear dues

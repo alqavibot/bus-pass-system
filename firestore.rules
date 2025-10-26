@@ -26,12 +26,22 @@ service cloud.firestore {
       allow update: if request.auth != null
                 && request.auth.uid == userId
                 && (
-                  // hallTicket can only be set once (if previously null/missing)
-                  (resource.data.hallTicket == null || request.resource.data.hallTicket == resource.data.hallTicket)
+                  // hallTicket cannot be changed after being set
+                  !request.resource.data.keys().hasAny(['hallTicket']) || 
+                  !resource.data.keys().hasAny(['hallTicket']) || 
+                  request.resource.data.hallTicket == resource.data.hallTicket
                 )
                 && (
-                  // prevent privilege escalation via role changes
-                  (resource.data.role == null || request.resource.data.role == resource.data.role)
+                  // role cannot be changed
+                  !request.resource.data.keys().hasAny(['role']) || 
+                  !resource.data.keys().hasAny(['role']) || 
+                  request.resource.data.role == resource.data.role
+                )
+                && (
+                  // academicYear can be set initially or kept the same
+                  !request.resource.data.keys().hasAny(['academicYear']) ||
+                  !resource.data.keys().hasAny(['academicYear']) ||
+                  request.resource.data.academicYear == resource.data.academicYear
                 );
     }
 

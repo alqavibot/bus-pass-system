@@ -9,9 +9,6 @@ import {
   Button,
   Box,
   Alert,
-  Stepper,
-  Step,
-  StepLabel,
   CircularProgress,
   Chip,
   Divider,
@@ -23,22 +20,18 @@ import {
 } from "@mui/icons-material";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function RenewPass() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
-  const [renewing, setRenewing] = useState(false);
   const [profile, setProfile] = useState(null);
   const [pass, setPass] = useState(null);
   const [currentAcademicYear, setCurrentAcademicYear] = useState(null);
   const [canRenew, setCanRenew] = useState(false);
   const [renewalReason, setRenewalReason] = useState("");
-  const [activeStep, setActiveStep] = useState(0);
-
-  const steps = ["Verify Eligibility", "Confirm Renewal", "Processing", "Complete"];
 
   useEffect(() => {
     loadData();
@@ -93,40 +86,18 @@ export default function RenewPass() {
   };
 
   const handleRenew = async () => {
-    if (!canRenew || !currentUser) return;
+    if (!canRenew || !currentUser || !profile) return;
     
-    setRenewing(true);
-    setActiveStep(1);
-
-    try {
-      // Step 2: Confirm renewal
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setActiveStep(2);
-
-      // Step 3: Process renewal
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Update pass with new academic year and activate it
-      await updateDoc(doc(db, "passes", currentUser.uid), {
-        academicYear: currentAcademicYear,
-        status: "active",
-        expiredReason: null,
-        renewedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      setActiveStep(3);
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // Navigate to payment page for new payment
-      navigate("/payment-options");
-    } catch (error) {
-      console.error("Error renewing pass:", error);
-      alert("Failed to renew pass. Please try again.");
-      setActiveStep(0);
-    } finally {
-      setRenewing(false);
+    // Check if student has bus and stage assigned from previous payment
+    if (!profile.busNumber || !profile.stage) {
+      alert("No previous bus/stage information found. Please make a new payment to select your bus and stage.");
+      navigate("/student/payment");
+      return;
     }
+
+    // Redirect to payment page - student MUST pay for the new academic year
+    alert("To renew your pass for the new academic year, please make a payment.");
+    navigate("/student/payment");
   };
 
   if (loading) {
@@ -218,37 +189,27 @@ export default function RenewPass() {
 
           {canRenew && (
             <Box sx={{ mt: 3 }}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Note:</strong> Renewing your pass will update it for the current academic year. 
-                You will need to make a new payment to activate the renewed pass.
-              </Typography>
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Typography variant="body2" fontWeight={600} gutterBottom>
+                  📋 Renewal Process:
+                </Typography>
+                <Typography variant="body2" component="div">
+                  1. Click "Renew Pass" button below<br/>
+                  2. You will be redirected to payment page<br/>
+                  3. <strong>Make payment for the new academic year</strong><br/>
+                  4. Your pass will be activated after successful payment
+                </Typography>
+              </Alert>
+              <Alert severity="warning">
+                <Typography variant="body2">
+                  <strong>⚠️ Important:</strong> Payment is mandatory to renew your pass. 
+                  You cannot use an expired pass without making payment for the current academic year.
+                </Typography>
+              </Alert>
             </Box>
           )}
         </CardContent>
       </Card>
-
-      {/* Renewal Process Stepper */}
-      {renewing && (
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Stepper activeStep={activeStep} alternativeLabel>
-              {steps.map((label) => (
-                <Step key={label}>
-                  <StepLabel>{label}</StepLabel>
-                </Step>
-              ))}
-            </Stepper>
-            <Box sx={{ textAlign: "center", mt: 3 }}>
-              <CircularProgress />
-              <Typography variant="body2" sx={{ mt: 2 }}>
-                {activeStep === 1 && "Confirming renewal..."}
-                {activeStep === 2 && "Processing your request..."}
-                {activeStep === 3 && "Renewal complete! Redirecting..."}
-              </Typography>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Action Buttons */}
       <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
@@ -266,9 +227,8 @@ export default function RenewPass() {
             size="large"
             startIcon={<RenewIcon />}
             onClick={handleRenew}
-            disabled={renewing}
           >
-            {renewing ? "Renewing..." : "Renew Pass"}
+            Proceed to Payment
           </Button>
         )}
 

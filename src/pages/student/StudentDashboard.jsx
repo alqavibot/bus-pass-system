@@ -11,7 +11,7 @@ import {
   where,
   orderBy,
 } from "firebase/firestore";
-import { Container, Typography, Card, CardContent, Button, Grid, Divider, Box, Chip, LinearProgress, Alert, Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
+import { Container, Typography, Card, CardContent, Button, Grid, Box, Chip, LinearProgress, Alert, Dialog, DialogTitle, DialogContent, IconButton } from "@mui/material";
 import { Receipt as ReceiptIcon, Close as CloseIcon } from "@mui/icons-material";
 
 import { auth, db } from "../../firebase/config";
@@ -21,7 +21,7 @@ import PaymentReceipt from "../../components/PaymentReceipt";
 export default function StudentDashboard() {
   const { currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [payments, setPayments] = useState([]);   // ✅ list, not single
+  const [payments, setPayments] = useState([]);
   const [pass, setPass] = useState(null);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
@@ -131,9 +131,8 @@ export default function StudentDashboard() {
             <>
               <Typography>Name: {profile.name}</Typography>
               <Typography>Hall Ticket: {profile.hallTicket}</Typography>
-              <Typography>Branch/Section: {profile.section}</Typography>
+              <Typography>Branch: {profile.branch || profile.section}</Typography>
               <Typography>Year: {profile.year}</Typography>
-              <Typography>Stage: {profile.stage}</Typography>
               <Button
                 variant="outlined"
                 sx={{ mt: 2 }}
@@ -153,16 +152,67 @@ export default function StudentDashboard() {
       {/* Bus Info Section */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Bus Information</Typography>
-          {profile ? (
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>Bus Information</Typography>
+          {profile || pass ? (
             <>
-              <Typography>
-                Bus Number: {profile.busNumber || "Not assigned"}
-              </Typography>
-              <Typography>Stage: {profile.stage || "N/A"}</Typography>
-              <Typography>Fee: {profile.fee ? `₹${profile.fee}` : "N/A"}</Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  <strong>Bus Number:</strong> {pass?.busNumber || profile?.busNumber || "Not assigned"}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 2 }}>
+                  <strong>Stage:</strong> {pass?.stage || profile?.stage || "N/A"}
+                </Typography>
+                
+                {/* Calculate and display fee based on payments */}
+                {(() => {
+                  // Get current academic year payments
+                  const currentYearPayments = payments.filter(
+                    p => p.status === "success" && p.academicYear === (pass?.academicYear || profile?.academicYear)
+                  );
+                  
+                  // Calculate total paid (ensure numbers, not strings)
+                  const totalPaid = currentYearPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+                  
+                  // Check if there's a due amount
+                  const dueAmount = Number(pass?.dueAmount) || 0;
+                  
+                  if (totalPaid > 0) {
+                    if (dueAmount > 0) {
+                      return (
+                        <Box>
+                          <Typography variant="body1">
+                            <strong>Paid:</strong> ₹{totalPaid} | <strong style={{ color: '#ed6c02' }}>Due:</strong> ₹{dueAmount}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Installment payment - Total: ₹{totalPaid + dueAmount}
+                          </Typography>
+                        </Box>
+                      );
+                    } else {
+                      return (
+                        <Box>
+                          <Typography variant="body1">
+                            <strong>Total Paid:</strong> ₹{totalPaid}
+                          </Typography>
+                          <Typography variant="caption" color="success.main" display="block" sx={{ mt: 0.5 }}>
+                            ✓ All fees cleared
+                          </Typography>
+                        </Box>
+                      );
+                    }
+                  } else {
+                    return (
+                      <Typography variant="body1">
+                        <strong>Fee:</strong> N/A
+                      </Typography>
+                    );
+                  }
+                })()}
+              </Box>
+              
               <Button
                 variant="contained"
+                fullWidth
                 sx={{ mt: 2 }}
                 onClick={() => navigate("/student/payment")}
               >
@@ -170,7 +220,7 @@ export default function StudentDashboard() {
               </Button>
             </>
           ) : (
-            <Typography color="text.secondary">No bus data found.</Typography>
+            <Typography color="text.secondary">No bus data found. Please make a payment to select your bus and stage.</Typography>
           )}
         </CardContent>
       </Card>
@@ -273,6 +323,8 @@ export default function StudentDashboard() {
                       pass.dueAmount > 0 ? (
                         <Alert severity="warning" sx={{ mb: 1, mt: 1 }}>
                           <strong>Due Amount: ₹{pass.dueAmount}</strong>
+                          <br />
+                          <small>Please complete your payment to clear dues</small>
                         </Alert>
                       ) : (
                         <Alert severity="success" sx={{ mb: 1, mt: 1 }}>
@@ -299,13 +351,24 @@ export default function StudentDashboard() {
               <Button
                 variant="contained"
                 sx={{ mt: 2 }}
-                onClick={() => navigate("/mypas")}
+                onClick={() => navigate("/my-pass")}
               >
                 View Pass Details
               </Button>
             </>
           ) : (
-            <Typography color="text.secondary">No pass issued yet.</Typography>
+            <>
+              <Typography color="text.secondary" gutterBottom>
+                No active pass found. Please make a payment to get your bus pass.
+              </Typography>
+              <Button 
+                variant="contained" 
+                sx={{ mt: 2 }}
+                onClick={() => navigate("/student/payment")}
+              >
+                Get Pass
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>
@@ -325,7 +388,7 @@ export default function StudentDashboard() {
         fullWidth
       >
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h6">Payment Receipt</Typography>
+          Payment Receipt
           <IconButton onClick={() => setReceiptOpen(false)}>
             <CloseIcon />
           </IconButton>

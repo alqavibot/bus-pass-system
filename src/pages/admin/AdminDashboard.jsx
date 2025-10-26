@@ -14,57 +14,57 @@ export default function AdminDashboard() {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Grid container spacing={2}>
-        {/* Sidebar */}
-        <Grid item xs={12} md={3}>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              borderRight: "1px solid #ddd",
-              pr: 2,
-              height: "100%",
-            }}
-          >
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              🚍 Admin Panel
-            </Typography>
+    <Box sx={{ display: 'flex', minHeight: 'calc(100vh - 64px)', width: '100%' }}>
+      {/* Sidebar - Fixed width */}
+      <Box
+        sx={{
+          width: 240,
+          flexShrink: 0,
+          bgcolor: '#f5f5f5',
+          borderRight: '2px solid #e0e0e0',
+          p: 2,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+        }}
+      >
+        <Typography variant="h6" sx={{ mb: 1, fontWeight: 700 }}>
+          🚍 Admin Panel
+        </Typography>
 
-            {/* ✅ Absolute paths */}
-            <Button component={Link} to="buses" variant="outlined">
-              Manage Buses
-            </Button>
-            <Button component={Link} to="stages" variant="outlined">
-              Manage Stages
-            </Button>
-            <Button component={Link} to="students" variant="outlined">
-              Manage Students
-            </Button>
-            <Button component={Link} to="settings" variant="outlined">
-              Settings
-            </Button>
-            <Button component={Link} to="cleanup" variant="outlined" color="warning">
-              🗑️ Cleanup Data
-            </Button>
+        {/* Navigation Buttons */}
+        <Button component={Link} to="buses" variant="outlined" fullWidth sx={{ justifyContent: 'flex-start' }}>
+          Manage Buses
+        </Button>
+        <Button component={Link} to="stages" variant="outlined" fullWidth sx={{ justifyContent: 'flex-start' }}>
+          Manage Stages
+        </Button>
+        <Button component={Link} to="students" variant="outlined" fullWidth sx={{ justifyContent: 'flex-start' }}>
+          Manage Students
+        </Button>
+        <Button component={Link} to="settings" variant="outlined" fullWidth sx={{ justifyContent: 'flex-start' }}>
+          Settings
+        </Button>
+        <Button component={Link} to="cleanup" variant="outlined" color="warning" fullWidth sx={{ justifyContent: 'flex-start' }}>
+          🗑️ Cleanup Data
+        </Button>
 
-            <Button
-              variant="contained"
-              color="error"
-              sx={{ mt: "auto" }}
-              onClick={handleLogout}
-            >
-              Logout
-            </Button>
-          </Box>
-        </Grid>
+        <Box sx={{ flexGrow: 1 }} />
+        
+        <Button
+          variant="contained"
+          color="error"
+          fullWidth
+          onClick={handleLogout}
+        >
+          Logout
+        </Button>
+      </Box>
 
-        {/* Main Content */}
-        <Grid item xs={12} md={9}>
-          <Outlet /> {/* ✅ This renders the child route */}
-        </Grid>
-      </Grid>
-    </Container>
+      {/* Main Content - Takes remaining space */}
+      <Box sx={{ flexGrow: 1, overflow: 'auto', bgcolor: '#fafafa' }}>
+        <Outlet /> {/* ✅ This renders the child route */}
+      </Box>
+    </Box>
   );
 }

@@ -210,14 +210,22 @@ export default function PassVerification() {
               />
             </Box>
 
-            {passData.dueAmount && passData.dueAmount > 0 && (
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                <Typography variant="body2">Due Amount:</Typography>
-                <Typography variant="body2" color="error" fontWeight="bold">
-                  ₹{passData.dueAmount}
-                </Typography>
-              </Box>
-            )}
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+              <Typography variant="body2">Due Amount:</Typography>
+              {passData.dueAmount !== undefined && passData.dueAmount !== null ? (
+                Number(passData.dueAmount) > 0 ? (
+                  <Typography variant="body2" color="error" fontWeight="bold">
+                    ₹{Number(passData.dueAmount)}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" color="success.main" fontWeight="bold">
+                    ₹0 (No Dues)
+                  </Typography>
+                )
+              ) : (
+                <Typography variant="body2">-</Typography>
+              )}
+            </Box>
             
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
               <Typography variant="body2">Issued On:</Typography>

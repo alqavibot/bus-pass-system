@@ -4,12 +4,14 @@ import { auth, db } from "../firebase/config";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { useNotification } from "../context/NotificationContext";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -27,15 +29,15 @@ const Login = () => {
       if (docSnap.exists()) {
         console.log("✅ User Profile:", docSnap.data());
 
-        alert("Login successful!");
+        showNotification("✅ Login successful! Welcome back.", "success");
         // ✅ Navigate student to their dashboard
-        navigate("/student/dashboard");
+        setTimeout(() => navigate("/student/dashboard"), 1000);
       } else {
-        alert("Profile not found. Please register first.");
+        showNotification("❌ Profile not found. Please register first.", "error");
       }
     } catch (error) {
       console.error("❌ Login Error:", error);
-      alert(error.message);
+      showNotification(`❌ Login failed: ${error.message}`, "error");
     }
 
     setLoading(false);

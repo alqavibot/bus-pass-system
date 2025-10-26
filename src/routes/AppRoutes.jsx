@@ -65,7 +65,7 @@ export default function AppRoutes() {
         }
       />
       <Route
-        path="/mypas"
+        path="/my-pass"
         element={
           <ProtectedRoute>
             <MyPass />

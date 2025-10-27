@@ -90,9 +90,9 @@ export default function ManageStudents() {
         const result = await syncBusStageData();
         
         if (result.success && result.updated > 0) {
-          console.log(`✅ Auto-sync: Updated ${result.updated} students with bus & stage data`);
+          console.log(`✅ Auto-sync: Updated ${result.updated} students with complete payment data`);
           // Show subtle notification only if data was actually updated
-          setSnackbarMessage(`✅ Synced bus & stage data for ${result.updated} students`);
+          setSnackbarMessage(`✅ Synced payment data for ${result.updated} students`);
           setSnackbarSeverity("info");
           setSnackbarOpen(true);
         } else if (result.success) {

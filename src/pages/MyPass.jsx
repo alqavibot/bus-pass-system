@@ -82,7 +82,7 @@ export default function MyPass() {
   console.log("MyPass render - loading:", loading, "profile:", profile);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4, minHeight: '80vh' }}>
+    <Container maxWidth="xl" sx={{ py: 3, px: { xs: 2, sm: 3, md: 4 }, minHeight: '80vh' }}>
       <Typography variant="h4" gutterBottom sx={{ fontWeight: 600, mb: 3 }}>
         🎫 My Bus Pass
       </Typography>

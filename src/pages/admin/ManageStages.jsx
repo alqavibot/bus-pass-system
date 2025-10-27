@@ -128,13 +128,15 @@ export default function ManageStages() {
   })).filter(bus => bus.stages.length > 0);
 
   return (
-    <Box sx={{ width: '100%', height: '100%', p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-        🚏 Manage Stages
-      </Typography>
+    <Box sx={{ width: '100%', height: '100%', p: { xs: 0.5, sm: 1 } }}>
+      <Paper elevation={1} sx={{ p: 1.5, mb: 1.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
+          Manage Stages
+        </Typography>
+      </Paper>
 
       {/* Add/Edit Form */}
-      <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+      <Paper elevation={1} sx={{ p: 1.5, mb: 1.5 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
           {editId ? "Edit Stage" : "Add New Stage"}
         </Typography>
@@ -255,11 +257,11 @@ export default function ManageStages() {
         </Box>
       </Paper>
 
-      {/* Stages Grouped by Bus - With Scrolling */}
+      {/* Stages Table */}
       {stages.length === 0 ? (
         <Alert severity="info">No stages added yet. Add your first stage above!</Alert>
       ) : (
-        <TableContainer component={Paper} elevation={1} sx={{ maxHeight: 'calc(100vh - 300px)', overflow: 'auto' }}>
+        <TableContainer component={Paper} elevation={1} sx={{ maxHeight: 'calc(100vh - 280px)', overflow: 'auto' }}>
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
@@ -267,12 +269,8 @@ export default function ManageStages() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '16%',
-                  borderTop: '3px solid #000',
-                  borderLeft: '3px solid #000',
-                  borderRight: '2px solid rgba(255,255,255,0.3)',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 140,
                 }}>
                   Bus Number
                 </TableCell>
@@ -280,10 +278,8 @@ export default function ManageStages() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '28%',
-                  borderTop: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 200,
                 }}>
                   Stage Name
                 </TableCell>
@@ -291,10 +287,8 @@ export default function ManageStages() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '14%',
-                  borderTop: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 120,
                 }} align="right">
                   Full Fee
                 </TableCell>
@@ -302,10 +296,8 @@ export default function ManageStages() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '14%',
-                  borderTop: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 130,
                 }} align="right">
                   1st Installment
                 </TableCell>
@@ -313,10 +305,8 @@ export default function ManageStages() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '14%',
-                  borderTop: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 130,
                 }} align="right">
                   2nd Installment
                 </TableCell>
@@ -324,11 +314,8 @@ export default function ManageStages() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '14%',
-                  borderTop: '3px solid #000',
-                  borderRight: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 120,
                 }} align="center">
                   Actions
                 </TableCell>
@@ -343,6 +330,7 @@ export default function ManageStages() {
                       hover
                       sx={{ 
                         '&:hover': { bgcolor: 'action.hover' },
+                        '&:last-child td': { border: 0 },
                         bgcolor: editId === stage.id ? 'action.selected' : 'inherit'
                       }}
                     >
@@ -350,86 +338,61 @@ export default function ManageStages() {
                       {stageIndex === 0 ? (
                         <TableCell 
                           sx={{ 
-                            py: 2, 
-                            height: '60px',
+                            py: 0.5,
                             fontWeight: 700, 
-                            bgcolor: 'primary.main',
-                            color: 'primary.contrastText',
-                            borderBottom: stageIndex === bus.stages.length - 1 ? '3px solid #000' : '1px solid rgba(255,255,255,0.3)',
-                            borderTop: busIndex === 0 ? 'none' : '3px solid #000',
-                            borderLeft: '3px solid #000',
-                            borderRight: '2px solid rgba(255,255,255,0.3)',
-                            width: '16%',
+                            bgcolor: 'info.light',
+                            color: '#000000',
+                            borderLeft: busIndex > 0 ? '1px solid rgba(0,0,0,0.12)' : undefined,
                           }}
                           rowSpan={bus.stages.length}
                         >
-                          <Typography variant="body2" fontWeight={700} fontSize="1rem">
-                            Bus {bus.number}
-                          </Typography>
-                          <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                            {bus.driver}
-                          </Typography>
+                          <Box>
+                            <Typography 
+                              variant="h6" 
+                              fontWeight={700}
+                              sx={{ 
+                                textTransform: 'uppercase',
+                                color: '#000000',
+                                fontSize: '1.1rem'
+                              }}
+                            >
+                              Bus {bus.number}
+                            </Typography>
+                            <Typography variant="caption" sx={{ opacity: 0.85, fontSize: '0.7rem', color: '#000000' }}>
+                              {bus.driver}
+                            </Typography>
+                          </Box>
                         </TableCell>
                       ) : null}
                       
-                      <TableCell sx={{ 
-                        py: 2,
-                        height: '60px',
-                        width: '28%',
-                        borderBottom: stageIndex === bus.stages.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                        borderTop: stageIndex === 0 && busIndex !== 0 ? '3px solid #000' : undefined,
-                      }}>
-                        <Typography variant="body2">
+                      <TableCell sx={{ py: 0.5 }}>
+                        <Typography variant="body2" fontWeight={500}>
                           {stage.name}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
-                        py: 2,
-                        height: '60px',
-                        width: '14%',
-                        borderBottom: stageIndex === bus.stages.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                        borderTop: stageIndex === 0 && busIndex !== 0 ? '3px solid #000' : undefined,
-                      }} align="right">
-                        <Typography variant="body2" fontWeight={600}>
+                      <TableCell sx={{ py: 0.5 }} align="right">
+                        <Typography variant="body2" fontWeight={700} color="success.main">
                           ₹{stage.fullFee}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
-                        py: 2,
-                        height: '60px',
-                        width: '14%',
-                        borderBottom: stageIndex === bus.stages.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                        borderTop: stageIndex === 0 && busIndex !== 0 ? '3px solid #000' : undefined,
-                      }} align="right">
-                        <Typography variant="body2">
+                      <TableCell sx={{ py: 0.5 }} align="right">
+                        <Typography variant="body2" fontWeight={600} color="warning.main">
                           ₹{stage.installment1}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
-                        py: 2,
-                        height: '60px',
-                        width: '14%',
-                        borderBottom: stageIndex === bus.stages.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                        borderTop: stageIndex === 0 && busIndex !== 0 ? '3px solid #000' : undefined,
-                      }} align="right">
-                        <Typography variant="body2">
+                      <TableCell sx={{ py: 0.5 }} align="right">
+                        <Typography variant="body2" fontWeight={600} color="warning.main">
                           ₹{stage.installment2}
                         </Typography>
                       </TableCell>
-                      <TableCell sx={{ 
-                        py: 2,
-                        height: '60px',
-                        width: '14%',
-                        borderBottom: stageIndex === bus.stages.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                        borderTop: stageIndex === 0 && busIndex !== 0 ? '3px solid #000' : undefined,
-                        borderRight: '3px solid #000',
-                      }} align="center">
+                      <TableCell sx={{ py: 0.5 }} align="center">
                         <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                           <IconButton
                             size="small"
                             color="primary"
                             onClick={() => handleEdit(stage)}
                             title="Edit"
+                            sx={{ '&:hover': { bgcolor: 'primary.light' } }}
                           >
                             <Edit fontSize="small" />
                           </IconButton>
@@ -438,6 +401,7 @@ export default function ManageStages() {
                             color="error"
                             onClick={() => handleDelete(stage.id)}
                             title="Delete"
+                            sx={{ '&:hover': { bgcolor: 'error.light' } }}
                           >
                             <Delete fontSize="small" />
                           </IconButton>

@@ -15,6 +15,7 @@ import ManageStages from "../pages/admin/ManageStages";
 import ManageStudents from "../pages/admin/ManageStudents";
 import Settings from "../pages/admin/Settings";
 import CleanupData from "../pages/admin/CleanupData";
+import IssueManualPass from "../pages/admin/IssueManualPass";
 import PaymentOptions from "../pages/student/PaymentOptions";
 import MyPass from "../pages/MyPass";
 import PassVerification from "../pages/PassVerification";
@@ -97,6 +98,7 @@ export default function AppRoutes() {
         <Route path="buses" element={<ManageBuses />} />
         <Route path="stages" element={<ManageStages />} />
         <Route path="students" element={<ManageStudents />} />
+        <Route path="issue-pass" element={<IssueManualPass />} />
         <Route path="settings" element={<Settings />} />
         <Route path="cleanup" element={<CleanupData />} />
       </Route>

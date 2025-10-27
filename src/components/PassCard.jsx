@@ -210,18 +210,27 @@ export default function PassCard({ profile }) {
                   </Typography>
                 </Box>
 
-                <Box>
+                <Box sx={{ gridColumn: 'span 2' }}>
                   <Typography variant="caption" color="text.secondary">
-                    Stage
+                    Stage / Route
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
                     {profile.stageName || profile.stageId || "-"}
                   </Typography>
                 </Box>
 
+                <Box sx={{ gridColumn: 'span 2' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Total Fees Paid
+                  </Typography>
+                  <Typography variant="body1" fontWeight={700} color="primary">
+                    ₹{profile.fee ? Number(profile.fee) : 0}
+                  </Typography>
+                </Box>
+
                 <Box>
                   <Typography variant="caption" color="text.secondary">
-                    Amount Paid
+                    Last Payment
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
                     {profile.lastPaymentAmount ? `₹${Number(profile.lastPaymentAmount)}` : "-"}
@@ -246,7 +255,7 @@ export default function PassCard({ profile }) {
                     Payment Method
                   </Typography>
                   <Typography variant="body2" fontWeight={600}>
-                    {profile.paymentMethod || "One Time Payment"}
+                    {profile.paymentMethod || "Online Payment"}
                   </Typography>
                 </Box>
               </Box>

@@ -185,6 +185,28 @@ export default function PaymentOptions() {
     };
   }, [currentPaymentId, navigate, currentUser]);
 
+  // ✅ Load fresh stage data in real-time (to get latest fees from admin)
+  const [freshStage, setFreshStage] = useState(stage);
+  
+  useEffect(() => {
+    if (!stage || !stage.id) return;
+    
+    const stageRef = doc(db, "stages", stage.id);
+    const unsubscribe = onSnapshot(stageRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const updatedStage = { id: docSnap.id, ...docSnap.data() };
+        setFreshStage(updatedStage);
+        console.log("💰 Stage data updated:", {
+          fullFee: updatedStage.fullFee,
+          installment1: updatedStage.installment1,
+          installment2: updatedStage.installment2
+        });
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [stage]);
+
   if (!bus || !stage) {
     return (
       <Container maxWidth="sm" sx={{ mt: 5 }}>
@@ -269,19 +291,26 @@ export default function PaymentOptions() {
     setPaymentStep(1); // Payment initiated
 
     try {
-      // Calculate amount based on payment mode
+      // Calculate amount based on payment mode (use freshStage for latest fees)
       let amount, passStatus, dueAmount = 0;
+      const currentStage = freshStage || stage; // Use fresh data if available
+      
+      console.log("💰 Calculating payment with fees:", {
+        fullFee: currentStage.fullFee,
+        installment1: currentStage.installment1,
+        installment2: currentStage.installment2
+      });
       
       if (paymentMode === "TOTAL") {
-        amount = stage.fullFee;
+        amount = currentStage.fullFee;
         passStatus = "NO DUE";
       } else if (paymentMode === "INSTALLMENT") {
         if (installmentType === "FIRST_SEM") {
-          amount = stage.installment1;
+          amount = currentStage.installment1;
           passStatus = "DUE";
-          dueAmount = stage.installment2; // Remaining amount
+          dueAmount = currentStage.installment2; // Remaining amount
         } else if (installmentType === "SECOND_SEM") {
-          amount = stage.installment2;
+          amount = currentStage.installment2;
           passStatus = "NO DUE";
         }
       }
@@ -375,26 +404,37 @@ export default function PaymentOptions() {
             });
 
             // ✅ UPDATE USER PROFILE with bus and stage information
+            // This MUST succeed for proper status display in admin dashboard
             try {
-              // Calculate total paid for this academic year
-              const currentYearSuccessPayments = paymentHistory.filter(
-                p => p.status === "success" && p.academicYear === academicYear
-              );
-              const previousPaid = currentYearSuccessPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-              const totalPaidAmount = previousPaid + Number(amount);
+              console.log("🔄 Updating user profile with payment status...");
+              console.log("💰 Current payment amount:", amount);
               
-              // Get current profile to check if academicYear needs updating
+              // Get current profile first
               const profileSnap = await getDoc(doc(db, "users", currentUser.uid));
               const profileData = profileSnap.data();
               
-              // Prepare update data
+              // Calculate total paid - use existing fee + current amount
+              const existingFee = Number(profileData?.fee || 0);
+              const currentAmount = Number(amount);
+              const totalPaidAmount = existingFee + currentAmount;
+              
+              console.log("💰 Previous fee:", existingFee);
+              console.log("💰 Adding amount:", currentAmount);
+              console.log("💰 Total fee:", totalPaidAmount);
+              
+              // Prepare update data - ALWAYS include status fields
               const updateData = {
                 busNumber: bus.number,
                 busId: bus.id,
                 stage: stage.name,
                 stageId: stage.id,
                 fee: totalPaidAmount, // Total amount paid so far
+                lastPaymentAmount: currentAmount, // Store current payment separately
                 lastPaymentDate: new Date(),
+                paymentMethod: paymentCompletionMethod, // How payment was completed
+                paymentStatus: "success", // ✅ CRITICAL: Shows in admin dashboard
+                passStatus: "Issued", // ✅ CRITICAL: Shows pass is active
+                updatedAt: new Date(),
               };
               
               // Only update academicYear if it's not set or different
@@ -402,14 +442,46 @@ export default function PaymentOptions() {
                 updateData.academicYear = academicYear;
               }
               
+              // Update user document with merge
               await setDoc(
                 doc(db, "users", currentUser.uid),
                 updateData,
                 { merge: true }
               );
+              
+              console.log("✅ User profile updated successfully!");
+              console.log("   Status:", updateData.paymentStatus, updateData.passStatus);
+              console.log("   Fee:", updateData.fee);
             } catch (profileError) {
-              console.error("Profile update error (non-critical):", profileError);
-              // Continue even if profile update fails - pass is already issued
+              console.error("❌ CRITICAL: Profile update failed:", profileError);
+              console.error("This means admin dashboard won't show correct status!");
+              // Try one more time with complete data
+              try {
+                const profileSnap = await getDoc(doc(db, "users", currentUser.uid));
+                const existingFee = Number(profileSnap.data()?.fee || 0);
+                const totalFee = existingFee + Number(amount);
+                
+                await setDoc(
+                  doc(db, "users", currentUser.uid),
+                  {
+                    busNumber: bus.number, // ✅ Include bus info in retry
+                    busId: bus.id, // ✅ Include bus ID in retry
+                    stage: stage.name, // ✅ Include stage info in retry
+                    stageId: stage.id, // ✅ Include stage ID in retry
+                    paymentStatus: "success",
+                    passStatus: "Issued",
+                    fee: totalFee,
+                    lastPaymentAmount: Number(amount),
+                    lastPaymentDate: new Date(),
+                    paymentMethod: paymentCompletionMethod,
+                    updatedAt: new Date(),
+                  },
+                  { merge: true }
+                );
+                console.log("✅ Retry successful - complete profile updated:", totalFee);
+              } catch (retryError) {
+                console.error("❌ Retry also failed:", retryError);
+              }
             }
           }, 800); // Reduced from 1000ms to 800ms
         } else {
@@ -531,8 +603,11 @@ export default function PaymentOptions() {
           
           <Box sx={{ mb: 2 }}>
             <Typography><strong>Bus:</strong> {bus.number} (Driver: {bus.driver})</Typography>
-            <Typography><strong>Stage:</strong> {stage.name}</Typography>
+            <Typography><strong>Stage:</strong> {freshStage?.name || stage.name}</Typography>
             <Typography><strong>Academic Year:</strong> {academicYear || "Loading..."}</Typography>
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+              💰 Current Fees: Full ₹{freshStage?.fullFee || stage.fullFee} | Installments: ₹{freshStage?.installment1 || stage.installment1} + ₹{freshStage?.installment2 || stage.installment2}
+            </Typography>
           </Box>
 
           {/* Payment History for this stage */}
@@ -594,7 +669,7 @@ export default function PaymentOptions() {
                 value="TOTAL" 
                 disabled={firstInstallmentPaid}
               >
-                Total Payment (₹{stage.fullFee}) - NO DUE Pass
+                Total Payment (₹{freshStage?.fullFee || stage.fullFee}) - NO DUE Pass
                 {firstInstallmentPaid && " (Already paid first installment)"}
               </MenuItem>
               <MenuItem value="INSTALLMENT">Installment Payment</MenuItem>
@@ -606,10 +681,10 @@ export default function PaymentOptions() {
                   // If first installment paid, directly show second installment payment info
                   <Alert severity="info" sx={{ mb: 2 }}>
                     <Typography variant="body2" gutterBottom>
-                      <strong>✅ First Semester Paid (₹{stage.installment1})</strong>
+                      <strong>✅ First Semester Paid (₹{freshStage?.installment1 || stage.installment1})</strong>
                     </Typography>
                     <Typography variant="body2">
-                      <strong>Due Amount: ₹{stage.installment2}</strong> (Second Semester)
+                      <strong>Due Amount: ₹{freshStage?.installment2 || stage.installment2}</strong> (Second Semester)
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       Pay the remaining installment to clear all dues.
@@ -624,12 +699,12 @@ export default function PaymentOptions() {
                     fullWidth
                     sx={{ mb: 2 }}
                   >
-                    <MenuItem value="FIRST_SEM">First Semester (₹{stage.installment1}) - DUE Pass</MenuItem>
+                    <MenuItem value="FIRST_SEM">First Semester (₹{freshStage?.installment1 || stage.installment1}) - DUE Pass</MenuItem>
                     <MenuItem 
                       value="SECOND_SEM" 
                       disabled={true}
                     >
-                      Second Semester (₹{stage.installment2}) - Pay First Semester First
+                      Second Semester (₹{freshStage?.installment2 || stage.installment2}) - Pay First Semester First
                     </MenuItem>
                   </TextField>
                 )}
@@ -644,12 +719,12 @@ export default function PaymentOptions() {
                 <Typography variant="body2">
                   <strong>Amount:</strong> ₹{
                     paymentMode === "TOTAL" 
-                      ? stage.fullFee 
+                      ? (freshStage?.fullFee || stage.fullFee)
                       : (paymentMode === "INSTALLMENT" && firstInstallmentPaid)
-                        ? stage.installment2  // Auto-show second installment amount
+                        ? (freshStage?.installment2 || stage.installment2)  // Auto-show second installment amount
                         : installmentType === "FIRST_SEM" 
-                          ? stage.installment1 
-                          : stage.installment2
+                          ? (freshStage?.installment1 || stage.installment1)
+                          : (freshStage?.installment2 || stage.installment2)
                   }
                 </Typography>
                 <Typography variant="body2">
@@ -665,7 +740,7 @@ export default function PaymentOptions() {
                 </Typography>
                 {paymentMode === "INSTALLMENT" && installmentType === "FIRST_SEM" && !firstInstallmentPaid && (
                   <Typography variant="body2" color="warning.main">
-                    <strong>Remaining Due:</strong> ₹{stage.installment2} (Second Semester)
+                    <strong>Remaining Due:</strong> ₹{freshStage?.installment2 || stage.installment2} (Second Semester)
                   </Typography>
                 )}
               </Box>

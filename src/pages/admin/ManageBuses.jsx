@@ -91,13 +91,15 @@ export default function ManageBuses() {
   };
 
   return (
-    <Box sx={{ width: '100%', height: '100%', p: 2 }}>
-      <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, mb: 2 }}>
-        🚌 Manage Buses
-      </Typography>
+    <Box sx={{ width: '100%', height: '100%', p: { xs: 0.5, sm: 1 } }}>
+      <Paper elevation={1} sx={{ p: 1.5, mb: 1.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1.5 }}>
+          Manage Buses
+        </Typography>
+      </Paper>
 
       {/* Add/Edit Form */}
-      <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+      <Paper elevation={1} sx={{ p: 1.5, mb: 1.5 }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5 }}>
           {editId ? "Edit Bus" : "Add New Bus"}
         </Typography>
@@ -141,11 +143,11 @@ export default function ManageBuses() {
         </Box>
       </Paper>
 
-      {/* Buses Table - With Scrolling */}
+      {/* Buses Table */}
       {buses.length === 0 ? (
         <Alert severity="info">No buses added yet. Add your first bus above!</Alert>
       ) : (
-        <TableContainer component={Paper} elevation={1} sx={{ maxHeight: 'calc(100vh - 300px)', overflow: 'auto' }}>
+        <TableContainer component={Paper} elevation={1} sx={{ maxHeight: 'calc(100vh - 250px)', overflow: 'auto' }}>
           <Table size="small" stickyHeader>
             <TableHead>
               <TableRow>
@@ -153,11 +155,8 @@ export default function ManageBuses() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '15%',
-                  borderTop: '3px solid #000',
-                  borderLeft: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 60,
                 }}>
                   #
                 </TableCell>
@@ -165,10 +164,8 @@ export default function ManageBuses() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '30%',
-                  borderTop: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 150,
                 }}>
                   Bus Number
                 </TableCell>
@@ -176,10 +173,8 @@ export default function ManageBuses() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '40%',
-                  borderTop: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 200,
                 }}>
                   Driver Name
                 </TableCell>
@@ -187,11 +182,8 @@ export default function ManageBuses() {
                   fontWeight: 700, 
                   bgcolor: "primary.main", 
                   color: "primary.contrastText", 
-                  width: '15%',
-                  borderTop: '3px solid #000',
-                  borderRight: '3px solid #000',
-                  borderBottom: 'none',
-                  py: 2,
+                  py: 1.2,
+                  minWidth: 120,
                 }} align="center">
                   Actions
                 </TableCell>
@@ -204,49 +196,33 @@ export default function ManageBuses() {
                   hover
                   sx={{ 
                     '&:hover': { bgcolor: 'action.hover' },
+                    '&:last-child td': { border: 0 },
                     bgcolor: editId === bus.id ? 'action.selected' : 'inherit'
                   }}
                 >
-                  <TableCell sx={{ 
-                    py: 2, 
-                    height: '60px',
-                    borderLeft: '3px solid #000',
-                    borderBottom: index === buses.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                  }}>
-                    <Typography variant="body2" fontWeight={600}>
+                  <TableCell sx={{ py: 0.5 }}>
+                    <Typography variant="body2" fontWeight={600} color="text.secondary">
                       {index + 1}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={{ 
-                    py: 2, 
-                    height: '60px',
-                    borderBottom: index === buses.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                  }}>
-                    <Typography variant="body2" fontWeight={600}>
+                  <TableCell sx={{ py: 0.5 }}>
+                    <Typography variant="body2" fontWeight={700} color="primary">
                       {bus.number}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={{ 
-                    py: 2, 
-                    height: '60px',
-                    borderBottom: index === buses.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                  }}>
-                    <Typography variant="body2">
+                  <TableCell sx={{ py: 0.5 }}>
+                    <Typography variant="body2" fontWeight={500}>
                       {bus.driver || "-"}
                     </Typography>
                   </TableCell>
-                  <TableCell sx={{ 
-                    py: 2, 
-                    height: '60px',
-                    borderRight: '3px solid #000',
-                    borderBottom: index === buses.length - 1 ? '3px solid #000' : '1px solid rgba(0,0,0,0.3)',
-                  }} align="center">
+                  <TableCell sx={{ py: 0.5 }} align="center">
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center' }}>
                       <IconButton
                         size="small"
                         color="primary"
                         onClick={() => handleEdit(bus)}
                         title="Edit"
+                        sx={{ '&:hover': { bgcolor: 'primary.light' } }}
                       >
                         <Edit fontSize="small" />
                       </IconButton>
@@ -255,6 +231,7 @@ export default function ManageBuses() {
                         color="error"
                         onClick={() => handleDelete(bus.id)}
                         title="Delete"
+                        sx={{ '&:hover': { bgcolor: 'error.light' } }}
                       >
                         <Delete fontSize="small" />
                       </IconButton>

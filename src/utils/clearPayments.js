@@ -135,7 +135,7 @@ export const clearPaymentsAndResetPasses = async () => {
         // Only update if user has pass-related fields
         if (userData.busNumber || userData.busId || userData.stage || 
             userData.stageId || userData.fee || userData.passStatus || 
-            userData.paymentStatus) {
+            userData.paymentStatus || userData.paymentMethod) {
           
           // Update user document to remove pass-related fields
           currentBatch.update(doc(db, 'users', document.id), {
@@ -148,6 +148,7 @@ export const clearPaymentsAndResetPasses = async () => {
             paymentStatus: null,
             lastPaymentAmount: null,
             lastPaymentDate: null,
+            paymentMethod: null,
           });
           
           operationCount++;

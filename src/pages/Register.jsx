@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Box, Card, CardContent, MenuItem } from "@mui/material";
+import { TextField, Button, Container, Typography, Box, Card, CardContent, MenuItem, Alert } from "@mui/material";
 import { auth, db } from "../firebase/config";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 const BRANCHES = ["CSE", "IT", "AIML", "ECE", "DIPLOMA", "PHARMACY", "EEE"];
+const YEARS = ["1", "2", "3", "4"];
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -60,6 +61,17 @@ const Register = () => {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Create your account to access the bus pass system
           </Typography>
+          
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="body2" fontWeight={600}>⚠️ Important: Please enter details carefully!</Typography>
+            <Typography variant="caption" display="block">
+              • <strong>Hall Ticket Number</strong> cannot be changed after registration
+            </Typography>
+            <Typography variant="caption" display="block">
+              • <strong>Year and Branch</strong> must be accurate for pass issuance
+            </Typography>
+          </Alert>
+          
           <form onSubmit={handleRegister}>
           <TextField
             label="Full Name"
@@ -74,8 +86,10 @@ const Register = () => {
             fullWidth
             margin="normal"
             value={hallTicket}
-            onChange={(e) => setHallTicket(e.target.value)}
+            onChange={(e) => setHallTicket(e.target.value.toUpperCase())}
             required
+            helperText="⚠️ Cannot be changed later - Enter carefully!"
+            error={hallTicket.length > 0 && hallTicket.length < 8}
           />
           <TextField
             select
@@ -85,7 +99,7 @@ const Register = () => {
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
             required
-            helperText="Select your branch/department"
+            helperText="⚠️ Select correct branch - Required for pass processing"
           >
             <MenuItem value="">-- Select Branch --</MenuItem>
             {BRANCHES.map((branchName) => (
@@ -95,13 +109,22 @@ const Register = () => {
             ))}
           </TextField>
           <TextField
+            select
             label="Year"
             fullWidth
             margin="normal"
             value={year}
             onChange={(e) => setYear(e.target.value)}
             required
-          />
+            helperText="⚠️ Select current academic year"
+          >
+            <MenuItem value="">-- Select Year --</MenuItem>
+            {YEARS.map((y) => (
+              <MenuItem key={y} value={y}>
+                Year {y}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Section"
             fullWidth

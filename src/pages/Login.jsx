@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { TextField, Button, Container, Typography, Box, Card, CardContent } from "@mui/material";
+import { TextField, Button, Container, Typography, Box, Card, CardContent, Link, Dialog, DialogTitle, DialogContent, DialogActions, Alert } from "@mui/material";
 import { auth, db } from "../firebase/config";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { useNotification } from "../context/NotificationContext";
@@ -10,6 +10,10 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
@@ -41,6 +45,47 @@ const Login = () => {
     }
 
     setLoading(false);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!resetEmail) {
+      showNotification("❌ Please enter your email address", "error");
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetSuccess(true);
+      showNotification("✅ Password reset email sent! Check your inbox.", "success");
+    } catch (error) {
+      console.error("❌ Password Reset Error:", error);
+      let errorMessage = "Failed to send password reset email";
+      
+      if (error.code === "auth/user-not-found") {
+        errorMessage = "No account found with this email address";
+      } else if (error.code === "auth/invalid-email") {
+        errorMessage = "Invalid email address";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMessage = "Too many requests. Please try again later";
+      }
+      
+      showNotification(`❌ ${errorMessage}`, "error");
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleOpenResetDialog = () => {
+    setResetEmail(email); // Pre-fill with login email if entered
+    setResetSuccess(false);
+    setResetDialogOpen(true);
+  };
+
+  const handleCloseResetDialog = () => {
+    setResetDialogOpen(false);
+    setResetEmail("");
+    setResetSuccess(false);
   };
 
   return (
@@ -82,9 +127,80 @@ const Login = () => {
             >
               {loading ? "Logging in..." : "Login"}
             </Button>
+
+            <Box sx={{ mt: 2, textAlign: "center" }}>
+              <Link
+                component="button"
+                type="button"
+                variant="body2"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleOpenResetDialog();
+                }}
+                sx={{ cursor: "pointer" }}
+              >
+                Forgot Password?
+              </Link>
+            </Box>
+
+            <Box sx={{ mt: 2, textAlign: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                Don't have an account?{" "}
+                <Link href="/register" underline="hover">
+                  Register here
+                </Link>
+              </Typography>
+            </Box>
           </form>
         </CardContent>
       </Card>
+
+      {/* Password Reset Dialog */}
+      <Dialog open={resetDialogOpen} onClose={handleCloseResetDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Reset Password</DialogTitle>
+        <DialogContent>
+          {resetSuccess ? (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                Password reset email sent successfully! Please check your inbox and follow the instructions to reset your password.
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <strong>Note:</strong> If you don't see the email, check your spam/junk folder.
+              </Typography>
+            </Alert>
+          ) : (
+            <>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Enter your registered email address and we'll send you a link to reset your password.
+              </Typography>
+              <TextField
+                autoFocus
+                label="Email Address"
+                type="email"
+                fullWidth
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                disabled={resetLoading}
+                sx={{ mt: 1 }}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseResetDialog} disabled={resetLoading}>
+            {resetSuccess ? "Close" : "Cancel"}
+          </Button>
+          {!resetSuccess && (
+            <Button
+              onClick={handlePasswordReset}
+              variant="contained"
+              disabled={resetLoading || !resetEmail}
+            >
+              {resetLoading ? "Sending..." : "Send Reset Link"}
+            </Button>
+          )}
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

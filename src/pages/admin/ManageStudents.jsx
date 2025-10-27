@@ -121,29 +121,42 @@ export default function ManageStudents() {
     return () => unsub();
   }, []);
 
-  // Filter students based on search, branch, and year
-  const filteredStudents = students.filter((s) => {
-    // Branch filter
-    if (selectedBranch !== "ALL" && s.branch !== selectedBranch) {
-      return false;
-    }
-    
-    // Year filter
-    if (selectedYear !== "ALL" && s.year !== selectedYear) {
-      return false;
-    }
-    
-    // Search filter
-    if (!qname) return true;
-    const q = qname.toLowerCase();
-    return (
-      String(s.name || "").toLowerCase().includes(q) ||
-      String(s.hallTicket || "").toLowerCase().includes(q) ||
-      String(s.email || "").toLowerCase().includes(q) ||
-      String(s.branch || "").toLowerCase().includes(q) ||
-      String(s.year || "").toLowerCase().includes(q)
-    );
-  });
+  // Filter and sort students based on search, branch, and year
+  const filteredStudents = students
+    .filter((s) => {
+      // Branch filter
+      if (selectedBranch !== "ALL" && s.branch !== selectedBranch) {
+        return false;
+      }
+      
+      // Year filter
+      if (selectedYear !== "ALL" && s.year !== selectedYear) {
+        return false;
+      }
+      
+      // Search filter
+      if (!qname) return true;
+      const q = qname.toLowerCase();
+      return (
+        String(s.name || "").toLowerCase().includes(q) ||
+        String(s.hallTicket || "").toLowerCase().includes(q) ||
+        String(s.email || "").toLowerCase().includes(q) ||
+        String(s.branch || "").toLowerCase().includes(q) ||
+        String(s.year || "").toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      // Sort by hall ticket number in ascending order
+      const hallTicketA = String(a.hallTicket || "").toUpperCase();
+      const hallTicketB = String(b.hallTicket || "").toUpperCase();
+      
+      // Handle cases where hall ticket might be empty or "-"
+      if (!hallTicketA || hallTicketA === "-") return 1;
+      if (!hallTicketB || hallTicketB === "-") return -1;
+      
+      // Compare hall tickets alphabetically/numerically
+      return hallTicketA.localeCompare(hallTicketB, undefined, { numeric: true, sensitivity: 'base' });
+    });
 
   // Get status color for chips
   const getStatusColor = (status) => {

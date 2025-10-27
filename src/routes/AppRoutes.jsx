@@ -20,6 +20,9 @@ import PaymentOptions from "../pages/student/PaymentOptions";
 import MyPass from "../pages/MyPass";
 import PassVerification from "../pages/PassVerification";
 import RenewPass from "../pages/student/RenewPass";
+import PrivacyPolicy from "../pages/PrivacyPolicy";
+import TermsAndConditions from "../pages/TermsAndConditions";
+import Support from "../pages/Support";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 
@@ -31,6 +34,9 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/verify/:studentId" element={<PassVerification />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsAndConditions />} />
+      <Route path="/support" element={<Support />} />
 
       {/* Student routes (protected) */}
       <Route
